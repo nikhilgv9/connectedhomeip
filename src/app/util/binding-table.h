@@ -22,8 +22,9 @@
 #pragma once
 
 #include <app/util/af-types.h>
+#include <app/util/config.h>
 #include <lib/core/CHIPPersistentStorageDelegate.h>
-#include <lib/core/CHIPTLV.h>
+#include <lib/core/TLV.h>
 #include <lib/support/DefaultStorageKeyAllocator.h>
 
 namespace chip {
@@ -109,8 +110,8 @@ private:
 
     CHIP_ERROR LoadEntryFromStorage(uint8_t index, uint8_t & nextIndex);
 
-    EmberBindingTableEntry mBindingTable[EMBER_BINDING_TABLE_SIZE];
-    uint8_t mNextIndex[EMBER_BINDING_TABLE_SIZE];
+    EmberBindingTableEntry mBindingTable[MATTER_BINDING_TABLE_SIZE];
+    uint8_t mNextIndex[MATTER_BINDING_TABLE_SIZE];
 
     uint8_t mHead = kNextNullIndex;
     uint8_t mTail = kNextNullIndex;

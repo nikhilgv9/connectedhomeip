@@ -25,12 +25,13 @@
 #include "CastingUtils.h"
 #if defined(ENABLE_CHIP_SHELL)
 #include "CastingShellCommands.h"
-#include <lib/shell/Engine.h>
+#include <lib/shell/Engine.h> // nogncheck
 #include <thread>
 #endif
 
 #include "LinuxCommissionableDataProvider.h"
 #include "Options.h"
+#include <app/codegen-data-model-provider/Instance.h>
 #include <credentials/DeviceAttestationCredsProvider.h>
 #include <credentials/attestation_verifier/DefaultDeviceAttestationVerifier.h>
 #include <credentials/attestation_verifier/DeviceAttestationVerifier.h>
@@ -106,6 +107,7 @@ CHIP_ERROR ProcessClusterCommand(int argc, char ** argv)
 
 int main(int argc, char * argv[])
 {
+    ChipLogProgress(AppServer, "chip_casting_simplified = 0"); // this file is built/run only if chip_casting_simplified = 0
     VerifyOrDie(CHIP_NO_ERROR == chip::Platform::MemoryInit());
     VerifyOrDie(CHIP_NO_ERROR == chip::DeviceLayer::PlatformMgr().InitChipStack());
 
@@ -134,12 +136,19 @@ int main(int argc, char * argv[])
         SetDeviceAttestationVerifier(GetDefaultDACVerifier(testingRootStore));
     }
 
+    SuccessOrExit(err = CastingServer::GetInstance()->PreInit());
+
     // Enter commissioning mode, open commissioning window
     static chip::CommonCaseDeviceServerInitParams initParams;
     VerifyOrDie(CHIP_NO_ERROR == initParams.InitializeStaticResourcesBeforeServerInit());
+    initParams.dataModelProvider = app::CodegenDataModelProviderInstance();
     VerifyOrDie(CHIP_NO_ERROR == chip::Server::GetInstance().Init(initParams));
 
-    if (ConnectToCachedVideoPlayer() == CHIP_NO_ERROR)
+    if (argc > 1)
+    {
+        ChipLogProgress(AppServer, "Command line parameters detected. Skipping auto-start.");
+    }
+    else if (ConnectToCachedVideoPlayer() == CHIP_NO_ERROR)
     {
         ChipLogProgress(AppServer, "Skipping commissioner discovery / User directed commissioning flow.");
     }
@@ -155,7 +164,7 @@ int main(int argc, char * argv[])
     }
 
     registerClusters(gCommands, &gCredIssuerCommands);
-    registerClusterSubscriptions(gCommands, &gCredIssuerCommands);
+    registerCommandsSubscriptions(gCommands, &gCredIssuerCommands);
 
     if (argc > 1)
     {

@@ -14,16 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
 import os
 import sys
 
 import click
 import coloredlogs
-
-import build
 from builders.builder import BuilderOptions
 from runner import PrintOnlyRunner, ShellRunner
+
+import build
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
@@ -59,6 +60,18 @@ def ValidateRepoPath(context, parameter, value):
     return value
 
 
+def ValidateTargetNames(context, parameter, values):
+    """
+    Validates that the given target name is valid.
+    """
+    for value in values:
+        if not any(target.StringIntoTargetParts(value.lower())
+                   for target in build.targets.BUILD_TARGETS):
+            raise click.BadParameter(
+                "'%s' is not a valid target name." % value)
+    return values
+
+
 @click.group(chain=True)
 @click.option(
     '--log-level',
@@ -69,14 +82,18 @@ def ValidateRepoPath(context, parameter, value):
     '--target',
     default=[],
     multiple=True,
-    help='Build target(s)'
-)
+    callback=ValidateTargetNames,
+    help='Build target(s)')
+@click.option(
+    '--enable-link-map-file',
+    default=False,
+    is_flag=True,
+    help='Enable generation of link map files.')
 @click.option(
     '--enable-flashbundle',
     default=False,
     is_flag=True,
-    help='Also generate the flashbundles for the app.'
-)
+    help='Also generate the flashbundles for the app.')
 @click.option(
     '--repo',
     default='.',
@@ -87,6 +104,18 @@ def ValidateRepoPath(context, parameter, value):
     default='./out',
     type=click.Path(file_okay=False, resolve_path=True),
     help='Prefix for the generated file output.')
+@click.option(
+    '--ninja-jobs',
+    type=int,
+    is_flag=False,
+    flag_value=0,
+    default=None,
+    help='Number of ninja jobs')
+@click.option(
+    '--pregen-dir',
+    default=None,
+    type=click.Path(file_okay=False, resolve_path=True),
+    help='Directory where generated files have been pre-generated.')
 @click.option(
     '--clean',
     default=False,
@@ -113,9 +142,9 @@ def ValidateRepoPath(context, parameter, value):
         'Set pigweed command launcher. E.g.: "--pw-command-launcher=ccache" '
         'for using ccache when building examples.'))
 @click.pass_context
-def main(context, log_level, target, repo,
-         out_prefix, clean, dry_run, dry_run_output, enable_flashbundle,
-         no_log_timestamps, pw_command_launcher):
+def main(context, log_level, target, enable_link_map_file, repo,
+         out_prefix, ninja_jobs, pregen_dir, clean, dry_run, dry_run_output,
+         enable_flashbundle, no_log_timestamps, pw_command_launcher):
     # Ensures somewhat pretty logging of what is going on
     log_fmt = '%(asctime)s %(levelname)-7s %(message)s'
     if no_log_timestamps:
@@ -139,10 +168,12 @@ before running this script.
     logging.info('Building targets: %s', CommaSeparate(requested_targets))
 
     context.obj = build.Context(
-        repository_path=repo, output_prefix=out_prefix, runner=runner)
+        repository_path=repo, output_prefix=out_prefix, ninja_jobs=ninja_jobs, runner=runner)
     context.obj.SetupBuilders(targets=requested_targets, options=BuilderOptions(
+        enable_link_map_file=enable_link_map_file,
         enable_flashbundle=enable_flashbundle,
         pw_command_launcher=pw_command_launcher,
+        pregen_dir=pregen_dir,
     ))
 
     if clean:
@@ -158,21 +189,29 @@ def cmd_generate(context):
 
 @main.command(
     'targets',
-    help=('List the targets that would be generated/built given '
-          'the input arguments'))
+    help=('Lists the targets that can be used with the build and gen commands'))
 @click.option(
-    '--expand',
-    default=False,
-    is_flag=True,
-    help='Expand all possible targets rather than the shorthand string')
+    '--format',
+    default='summary',
+    type=click.Choice(['summary', 'expanded', 'json'], case_sensitive=False),
+    help="""
+        summary - list of shorthand strings summarzing the available targets;
+
+        expanded - list all possible targets rather than the shorthand string;
+
+        json - a JSON representation of the available targets
+        """)
 @click.pass_context
-def cmd_targets(context, expand):
-    for target in build.targets.BUILD_TARGETS:
-        if expand:
+def cmd_targets(context, format):
+    if format == 'expanded':
+        for target in build.targets.BUILD_TARGETS:
             build.target.report_rejected_parts = False
             for s in target.AllVariants():
                 print(s)
-        else:
+    elif format == 'json':
+        print(json.dumps([target.ToDict() for target in build.targets.BUILD_TARGETS], indent=4))
+    else:
+        for target in build.targets.BUILD_TARGETS:
             print(target.HumanString())
 
 
@@ -199,4 +238,4 @@ def cmd_build(context, copy_artifacts_to, create_archives):
 
 
 if __name__ == '__main__':
-    main()
+    main(auto_envvar_prefix='CHIP')

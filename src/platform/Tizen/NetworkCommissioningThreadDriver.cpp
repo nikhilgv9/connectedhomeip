@@ -15,16 +15,19 @@
  *    limitations under the License.
  */
 
-#include <lib/support/CodeUtils.h>
-#include <lib/support/SafeInt.h>
-#include <platform/CHIPDeviceLayer.h>
-#include <platform/ThreadStackManager.h>
-#include <platform/Tizen/NetworkCommissioningDriver.h>
-#include <platform/Tizen/ThreadStackManagerImpl.h>
+#include <cstdint>
+#include <cstring>
 
-#include <limits>
-#include <string>
-#include <vector>
+#include <lib/core/CHIPError.h>
+#include <lib/support/CodeUtils.h>
+#include <lib/support/Span.h>
+#include <lib/support/ThreadOperationalDataset.h>
+#include <platform/CHIPDeviceConfig.h>
+#include <platform/ConnectivityManager.h>
+#include <platform/NetworkCommissioning.h>
+#include <platform/ThreadStackManager.h>
+
+#include "NetworkCommissioningDriver.h"
 
 namespace chip {
 namespace DeviceLayer {
@@ -34,8 +37,8 @@ namespace NetworkCommissioning {
 
 CHIP_ERROR TizenThreadDriver::Init(BaseDriver::NetworkStatusChangeCallback * networkStatusChangeCallback)
 {
-    VerifyOrReturnError(ConnectivityMgrImpl().IsThreadAttached(), CHIP_NO_ERROR);
-    VerifyOrReturnError(ThreadStackMgrImpl().GetThreadProvision(mStagingNetwork) == CHIP_NO_ERROR, CHIP_NO_ERROR);
+    VerifyOrReturnError(ConnectivityMgr().IsThreadAttached(), CHIP_NO_ERROR);
+    VerifyOrReturnError(ThreadStackMgr().GetThreadProvision(mStagingNetwork) == CHIP_NO_ERROR, CHIP_NO_ERROR);
 
     mSavedNetwork.Init(mStagingNetwork.AsByteSpan());
 
@@ -129,7 +132,7 @@ void TizenThreadDriver::ConnectNetwork(ByteSpan networkId, ConnectCallback * cal
         (networkId.size() == Thread::kSizeExtendedPanId && memcmp(networkId.data(), extpanid, Thread::kSizeExtendedPanId) == 0),
         status = Status::kNetworkNotFound);
 
-    VerifyOrExit(DeviceLayer::ThreadStackMgrImpl().AttachToThreadNetwork(mStagingNetwork, callback) == CHIP_NO_ERROR,
+    VerifyOrExit(DeviceLayer::ThreadStackMgr().AttachToThreadNetwork(mStagingNetwork, callback) == CHIP_NO_ERROR,
                  status = Status::kUnknownError);
 
 exit:
@@ -141,7 +144,7 @@ exit:
 
 void TizenThreadDriver::ScanNetworks(ThreadDriver::ScanCallback * callback)
 {
-    CHIP_ERROR err = DeviceLayer::ThreadStackMgrImpl().StartThreadScan(callback);
+    CHIP_ERROR err = DeviceLayer::ThreadStackMgr().StartThreadScan(callback);
     if (err != CHIP_NO_ERROR)
     {
         callback->OnFinished(Status::kUnknownError, CharSpan(), nullptr);
@@ -158,6 +161,26 @@ bool TizenThreadDriver::ThreadNetworkIterator::Next(Network & item)
 {
     ChipLogError(NetworkProvisioning, "Not implemented");
     return false;
+}
+
+ThreadCapabilities TizenThreadDriver::GetSupportedThreadFeatures()
+{
+    BitMask<ThreadCapabilities> capabilites = 0;
+    capabilites.SetField(ThreadCapabilities::kIsBorderRouterCapable,
+                         CHIP_DEVICE_CONFIG_THREAD_BORDER_ROUTER /*OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE*/);
+    capabilites.SetField(ThreadCapabilities::kIsRouterCapable, CHIP_DEVICE_CONFIG_THREAD_FTD);
+    capabilites.SetField(ThreadCapabilities::kIsSleepyEndDeviceCapable, !CHIP_DEVICE_CONFIG_THREAD_FTD);
+    capabilites.SetField(ThreadCapabilities::kIsFullThreadDevice, CHIP_DEVICE_CONFIG_THREAD_FTD);
+    capabilites.SetField(ThreadCapabilities::kIsSynchronizedSleepyEndDeviceCapable,
+                         (!CHIP_DEVICE_CONFIG_THREAD_FTD && CHIP_DEVICE_CONFIG_THREAD_SSED));
+    return capabilites;
+}
+
+uint16_t TizenThreadDriver::GetThreadVersion()
+{
+    uint16_t version = 0;
+    DeviceLayer::ThreadStackMgr().GetThreadVersion(version);
+    return version;
 }
 
 #endif // CHIP_DEVICE_CONFIG_ENABLE_THREAD

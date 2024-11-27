@@ -17,16 +17,19 @@
 
 #include "NrfWiFiDriver.h"
 
-#include "WiFiManager.h"
+#include <stdint.h>
+
 #include <platform/KeyValueStoreManager.h>
 
 #include <lib/support/CodeUtils.h>
 #include <lib/support/SafeInt.h>
+#include <lib/support/TypeTraits.h>
 #include <platform/CHIPDeviceLayer.h>
 
 using namespace ::chip;
 using namespace ::chip::DeviceLayer::Internal;
 using namespace ::chip::DeviceLayer::PersistedStorage;
+using namespace ::chip::app::Clusters::NetworkCommissioning;
 
 namespace chip {
 namespace DeviceLayer {
@@ -48,7 +51,7 @@ bool NrfWiFiDriver::WiFiNetworkIterator::Next(Network & item)
     }
 
     memcpy(item.networkID, mDriver->mStagingNetwork.ssid, mDriver->mStagingNetwork.ssidLen);
-    item.networkIDLen = mDriver->mStagingNetwork.ssidLen;
+    item.networkIDLen = static_cast<uint8_t>(mDriver->mStagingNetwork.ssidLen);
     item.connected    = false;
 
     mExhausted = true;
@@ -103,9 +106,10 @@ CHIP_ERROR NrfWiFiDriver::Init(NetworkStatusChangeCallback * networkStatusChange
 
     if (mStagingNetwork.IsConfigured())
     {
-        WiFiManager::ConnectionHandling handling{ [] { Instance().OnNetworkStatusChanged(Status::kSuccess); },
-                                                  [] { Instance().OnNetworkStatusChanged(Status::kUnknownError); },
-                                                  System::Clock::Timeout{ 40000 } };
+        WiFiManager::ConnectionHandling handling{ [](const wifi_conn_status & connStatus) {
+                                                     Instance().OnNetworkConnStatusChanged(connStatus);
+                                                 },
+                                                  System::Clock::Seconds32{ kWiFiConnectNetworkTimeoutSeconds } };
         ReturnErrorOnFailure(
             WiFiManager::Instance().Connect(mStagingNetwork.GetSsidSpan(), mStagingNetwork.GetPassSpan(), handling));
     }
@@ -113,15 +117,42 @@ CHIP_ERROR NrfWiFiDriver::Init(NetworkStatusChangeCallback * networkStatusChange
     return CHIP_NO_ERROR;
 }
 
-void NrfWiFiDriver::OnNetworkStatusChanged(Status status)
+void NrfWiFiDriver::OnNetworkConnStatusChanged(const wifi_conn_status & connStatus)
 {
+    // TODO: check if we can report more accurate errors
+    Status status = connStatus ? Status::kUnknownError : Status::kSuccess;
+
     if (status == Status::kSuccess)
     {
         ConnectivityMgr().SetWiFiStationMode(ConnectivityManager::kWiFiStationMode_Enabled);
     }
 
     if (mpNetworkStatusChangeCallback)
-        mpNetworkStatusChangeCallback->OnNetworkingStatusChange(status, NullOptional, NullOptional);
+    {
+        const uint8_t * ssid{};
+        size_t ssidLen{};
+        WiFiManager::WiFiInfo wifiInfo;
+
+        if (CHIP_NO_ERROR == WiFiManager::Instance().GetWiFiInfo(wifiInfo))
+        {
+            ssid    = wifiInfo.mSsid;
+            ssidLen = wifiInfo.mSsidLen;
+        }
+        else
+        {
+            ssid    = WiFiManager::Instance().GetWantedNetwork().ssid;
+            ssidLen = WiFiManager::Instance().GetWantedNetwork().ssidLen;
+        }
+        mpNetworkStatusChangeCallback->OnNetworkingStatusChange(status, MakeOptional(ByteSpan(ssid, ssidLen)),
+                                                                connStatus ? MakeOptional(static_cast<int32_t>(connStatus))
+                                                                           : NullOptional);
+    }
+
+    if (mpConnectCallback)
+    {
+        mpConnectCallback->OnResult(status, CharSpan(), 0);
+        mpConnectCallback = nullptr;
+    }
 }
 
 void NrfWiFiDriver::Shutdown()
@@ -141,11 +172,25 @@ CHIP_ERROR NrfWiFiDriver::RevertConfiguration()
 {
     LoadFromStorage();
 
+    if (WiFiManager::StationStatus::CONNECTING <= WiFiManager::Instance().GetStationStatus())
+    {
+        WiFiManager::WiFiInfo wifiInfo;
+        ReturnErrorOnFailure(WiFiManager::Instance().GetWiFiInfo(wifiInfo));
+        if (mStagingNetwork.GetSsidSpan().data_equal(ByteSpan(wifiInfo.mSsid, wifiInfo.mSsidLen)))
+        {
+            // we are already connected to this network, so return prematurely
+            return CHIP_NO_ERROR;
+        }
+
+        WiFiManager::Instance().Disconnect();
+    }
+
     if (mStagingNetwork.IsConfigured())
     {
-        WiFiManager::ConnectionHandling handling{ [] { Instance().OnConnectWiFiNetwork(); },
-                                                  [] { Instance().OnConnectWiFiNetworkFailed(); },
-                                                  System::Clock::Timeout{ 40000 } };
+        WiFiManager::ConnectionHandling handling{ [](const wifi_conn_status & connStatus) {
+                                                     Instance().OnNetworkConnStatusChanged(connStatus);
+                                                 },
+                                                  System::Clock::Seconds32{ kWiFiConnectNetworkTimeoutSeconds } };
         ReturnErrorOnFailure(
             WiFiManager::Instance().Connect(mStagingNetwork.GetSsidSpan(), mStagingNetwork.GetPassSpan(), handling));
     }
@@ -163,6 +208,7 @@ Status NrfWiFiDriver::AddOrUpdateNetwork(ByteSpan ssid, ByteSpan credentials, Mu
     VerifyOrReturnError(ssid.size() <= sizeof(mStagingNetwork.ssid), Status::kOutOfRange);
     VerifyOrReturnError(credentials.size() <= sizeof(mStagingNetwork.pass), Status::kOutOfRange);
 
+    mStagingNetwork.Erase();
     memcpy(mStagingNetwork.ssid, ssid.data(), ssid.size());
     memcpy(mStagingNetwork.pass, credentials.data(), credentials.size());
     mStagingNetwork.ssidLen = ssid.size();
@@ -196,53 +242,56 @@ Status NrfWiFiDriver::ReorderNetwork(ByteSpan networkId, uint8_t index, MutableC
 void NrfWiFiDriver::ConnectNetwork(ByteSpan networkId, ConnectCallback * callback)
 {
     Status status = Status::kSuccess;
-    WiFiManager::ConnectionHandling handling{ [] { Instance().OnConnectWiFiNetwork(); },
-                                              [] { Instance().OnConnectWiFiNetworkFailed(); }, System::Clock::Timeout{ 40000 } };
+    WiFiManager::ConnectionHandling handling{ [](const wifi_conn_status & connStatus) {
+                                                 Instance().OnNetworkConnStatusChanged(connStatus);
+                                             },
+                                              System::Clock::Seconds32{ kWiFiConnectNetworkTimeoutSeconds } };
 
-    VerifyOrExit(networkId.data_equal(mStagingNetwork.GetSsidSpan()), status = Status::kNetworkIDNotFound);
     VerifyOrExit(mpConnectCallback == nullptr, status = Status::kUnknownError);
-
     mpConnectCallback = callback;
+
+    VerifyOrExit(WiFiManager::StationStatus::CONNECTING != WiFiManager::Instance().GetStationStatus(),
+                 status = Status::kOtherConnectionFailure);
+    VerifyOrExit(networkId.data_equal(mStagingNetwork.GetSsidSpan()), status = Status::kNetworkIDNotFound);
+
     WiFiManager::Instance().Connect(mStagingNetwork.GetSsidSpan(), mStagingNetwork.GetPassSpan(), handling);
 
 exit:
-    if (status != Status::kSuccess)
+    if (status != Status::kSuccess && mpConnectCallback)
     {
-        mpConnectCallback = nullptr;
-        callback->OnResult(status, CharSpan(), 0);
-    }
-}
-
-CHIP_ERROR GetConfiguredNetwork(Network & network)
-{
-    return CHIP_NO_ERROR;
-}
-
-void NrfWiFiDriver::OnConnectWiFiNetwork()
-{
-    ConnectivityMgr().SetWiFiStationMode(ConnectivityManager::kWiFiStationMode_Enabled);
-
-    if (mpConnectCallback)
-    {
-        mpConnectCallback->OnResult(Status::kSuccess, CharSpan(), 0);
+        mpConnectCallback->OnResult(status, CharSpan(), 0);
         mpConnectCallback = nullptr;
     }
 }
 
-void NrfWiFiDriver::OnConnectWiFiNetworkFailed()
+void NrfWiFiDriver::LoadFromStorage()
 {
-    if (mpConnectCallback)
-    {
-        mpConnectCallback->OnResult(Status::kNetworkNotFound, CharSpan(), 0);
-        mpConnectCallback = nullptr;
-    }
+    WiFiManager::WiFiNetwork network;
+
+    mStagingNetwork = {};
+    ReturnOnFailure(KeyValueStoreMgr().Get(kSsidKey, network.ssid, sizeof(network.ssid), &network.ssidLen));
+    ReturnOnFailure(KeyValueStoreMgr().Get(kPassKey, network.pass, sizeof(network.pass), &network.passLen));
+    mStagingNetwork = network;
+}
+
+void NrfWiFiDriver::OnScanWiFiNetworkDone(const WiFiManager::ScanDoneStatus & status)
+{
+    VerifyOrReturn(mScanCallback != nullptr);
+    mScanCallback->OnFinished(status ? Status::kUnknownError : Status::kSuccess, CharSpan(), &mScanResponseIterator);
+    mScanCallback = nullptr;
+}
+
+void NrfWiFiDriver::OnScanWiFiNetworkResult(const WiFiScanResponse & response)
+{
+    mScanResponseIterator.Add(response);
 }
 
 void NrfWiFiDriver::ScanNetworks(ByteSpan ssid, WiFiDriver::ScanCallback * callback)
 {
     mScanCallback    = callback;
     CHIP_ERROR error = WiFiManager::Instance().Scan(
-        ssid, [](int status, WiFiScanResponse * response) { Instance().OnScanWiFiNetworkDone(status, response); });
+        ssid, [](const WiFiScanResponse & response) { Instance().OnScanWiFiNetworkResult(response); },
+        [](const WiFiManager::ScanDoneStatus & status) { Instance().OnScanWiFiNetworkDone(status); });
 
     if (error != CHIP_NO_ERROR)
     {
@@ -251,32 +300,13 @@ void NrfWiFiDriver::ScanNetworks(ByteSpan ssid, WiFiDriver::ScanCallback * callb
     }
 }
 
-void NrfWiFiDriver::OnScanWiFiNetworkDone(int status, WiFiScanResponse * response)
+uint32_t NrfWiFiDriver::GetSupportedWiFiBandsMask() const
 {
-    if (response != nullptr)
-    {
-        StackLock lock;
-        VerifyOrReturn(mScanCallback != nullptr);
-        mScanResponseIterator.Add(*response);
-        return;
-    }
-
-    // Scan complete
-    DeviceLayer::SystemLayer().ScheduleLambda([this, status]() {
-        VerifyOrReturn(mScanCallback != nullptr);
-        mScanCallback->OnFinished(status == 0 ? Status::kSuccess : Status::kUnknownError, CharSpan(), &mScanResponseIterator);
-        mScanCallback = nullptr;
-    });
-}
-
-void NrfWiFiDriver::LoadFromStorage()
-{
-    WiFiNetwork network;
-
-    mStagingNetwork = {};
-    ReturnOnFailure(KeyValueStoreMgr().Get(kSsidKey, network.ssid, sizeof(network.ssid), &network.ssidLen));
-    ReturnOnFailure(KeyValueStoreMgr().Get(kPassKey, network.pass, sizeof(network.pass), &network.passLen));
-    mStagingNetwork = network;
+    uint32_t bands = static_cast<uint32_t>(1UL << chip::to_underlying(WiFiBandEnum::k2g4));
+#ifndef CONFIG_BOARD_NRF7001
+    bands |= static_cast<uint32_t>(1UL << chip::to_underlying(WiFiBandEnum::k5g));
+#endif
+    return bands;
 }
 
 } // namespace NetworkCommissioning

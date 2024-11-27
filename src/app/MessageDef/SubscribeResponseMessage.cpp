@@ -59,7 +59,7 @@ CHIP_ERROR SubscribeResponseMessage::Parser::PrettyPrint() const
             }
 #endif // CHIP_DETAIL_LOGGING
             break;
-        case kInteractionModelRevisionTag:
+        case Revision::kInteractionModelRevisionTag:
             ReturnErrorOnFailure(MessageParser::CheckInteractionModelRevision(reader));
             break;
         default:
@@ -93,7 +93,7 @@ SubscribeResponseMessage::Builder & SubscribeResponseMessage::Builder::Subscript
 {
     if (mError == CHIP_NO_ERROR)
     {
-        mError = mpWriter->Put(TLV::ContextTag(to_underlying(Tag::kSubscriptionId)), aSubscribeId);
+        mError = mpWriter->Put(TLV::ContextTag(Tag::kSubscriptionId), aSubscribeId);
     }
     return *this;
 }
@@ -102,12 +102,12 @@ SubscribeResponseMessage::Builder & SubscribeResponseMessage::Builder::MaxInterv
 {
     if (mError == CHIP_NO_ERROR)
     {
-        mError = mpWriter->Put(TLV::ContextTag(to_underlying(Tag::kMaxInterval)), aMaxInterval);
+        mError = mpWriter->Put(TLV::ContextTag(Tag::kMaxInterval), aMaxInterval);
     }
     return *this;
 }
 
-SubscribeResponseMessage::Builder & SubscribeResponseMessage::Builder::EndOfSubscribeResponseMessage()
+CHIP_ERROR SubscribeResponseMessage::Builder::EndOfSubscribeResponseMessage()
 {
     if (mError == CHIP_NO_ERROR)
     {
@@ -117,7 +117,7 @@ SubscribeResponseMessage::Builder & SubscribeResponseMessage::Builder::EndOfSubs
     {
         EndOfContainer();
     }
-    return *this;
+    return GetError();
 }
 } // namespace app
 } // namespace chip

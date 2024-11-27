@@ -35,7 +35,6 @@
 
 #include <mutex>
 
-#include <app-common/zap-generated/enums.h>
 #include <app-common/zap-generated/ids/Events.h>
 #include <lib/support/CHIPMem.h>
 #include <lib/support/logging/CHIPLogging.h>
@@ -56,9 +55,14 @@ PlatformManagerImpl PlatformManagerImpl::sInstance;
 namespace {
 
 #if CHIP_DEVICE_CONFIG_WITH_GLIB_MAIN_LOOP
-void * GLibMainLoopThread(void * loop)
+void * GLibMainLoopThread(void * userData)
 {
-    g_main_loop_run(static_cast<GMainLoop *>(loop));
+    GMainLoop * loop       = static_cast<GMainLoop *>(userData);
+    GMainContext * context = g_main_loop_get_context(loop);
+
+    g_main_context_push_thread_default(context);
+    g_main_loop_run(loop);
+
     return nullptr;
 }
 #endif
@@ -104,13 +108,13 @@ gboolean WiFiIPChangeListener(GIOChannel * ch, GIOCondition /* condition */, voi
                             continue;
                         }
 
-                        if (ConnectivityManagerImpl::GetWiFiIfName() == nullptr)
+                        if (ConnectivityMgrImpl().GetWiFiIfName() == nullptr)
                         {
                             ChipLogDetail(DeviceLayer, "No wifi interface name. Ignoring IP update event.");
                             continue;
                         }
 
-                        if (strcmp(name, ConnectivityManagerImpl::GetWiFiIfName()) != 0)
+                        if (strcmp(name, ConnectivityMgrImpl().GetWiFiIfName()) != 0)
                         {
                             continue;
                         }
@@ -119,10 +123,9 @@ gboolean WiFiIPChangeListener(GIOChannel * ch, GIOCondition /* condition */, voi
                         inet_ntop(AF_INET, RTA_DATA(routeInfo), ipStrBuf, sizeof(ipStrBuf));
                         ChipLogDetail(DeviceLayer, "Got IP address on interface: %s IP: %s", name, ipStrBuf);
 
-                        ChipDeviceEvent event;
-                        event.Type                            = DeviceEventType::kInternetConnectivityChange;
-                        event.InternetConnectivityChange.IPv4 = kConnectivity_Established;
-                        event.InternetConnectivityChange.IPv6 = kConnectivity_NoChange;
+                        ChipDeviceEvent event{ .Type                       = DeviceEventType::kInternetConnectivityChange,
+                                               .InternetConnectivityChange = { .IPv4 = kConnectivity_Established,
+                                                                               .IPv6 = kConnectivity_NoChange } };
 
                         if (!chip::Inet::IPAddress::FromString(ipStrBuf, event.InternetConnectivityChange.ipAddress))
                         {
@@ -172,11 +175,15 @@ CHIP_ERROR RunWiFiIPChangeListener()
         return CHIP_ERROR_INTERNAL;
     }
 
-    GIOChannel * ch = g_io_channel_unix_new(sock);
-    g_io_add_watch_full(ch, G_PRIORITY_DEFAULT, G_IO_IN, WiFiIPChangeListener, nullptr, nullptr);
-
+    GIOChannel * ch       = g_io_channel_unix_new(sock);
+    GSource * watchSource = g_io_create_watch(ch, G_IO_IN);
+    g_source_set_callback(watchSource, G_SOURCE_FUNC(WiFiIPChangeListener), nullptr, nullptr);
     g_io_channel_set_close_on_unref(ch, TRUE);
     g_io_channel_set_encoding(ch, nullptr, nullptr);
+
+    PlatformMgrImpl().GLibMatterContextAttachSource(watchSource);
+
+    g_source_unref(watchSource);
     g_io_channel_unref(ch);
 
     return CHIP_NO_ERROR;
@@ -190,14 +197,34 @@ CHIP_ERROR PlatformManagerImpl::_InitChipStack()
 {
 #if CHIP_DEVICE_CONFIG_WITH_GLIB_MAIN_LOOP
 
-    mGLibMainLoop       = g_main_loop_new(nullptr, FALSE);
+    auto * context      = g_main_context_new();
+    mGLibMainLoop       = g_main_loop_new(context, FALSE);
     mGLibMainLoopThread = g_thread_new("gmain-matter", GLibMainLoopThread, mGLibMainLoop);
+    g_main_context_unref(context);
 
     {
+        // Wait for the GLib main loop to start. It is required that the context used
+        // by the main loop is acquired before any other GLib functions are called. Otherwise,
+        // the GLibMatterContextInvokeSync() might run functions on the wrong thread.
+
         std::unique_lock<std::mutex> lock(mGLibMainLoopCallbackIndirectionMutex);
-        CallbackIndirection startedInd([](void *) { return G_SOURCE_REMOVE; }, nullptr);
-        g_idle_add(G_SOURCE_FUNC(&CallbackIndirection::Callback), &startedInd);
-        startedInd.Wait(lock);
+        GLibMatterContextInvokeData invokeData{};
+
+        auto * idleSource = g_idle_source_new();
+        g_source_set_callback(
+            idleSource,
+            [](void * userData_) {
+                auto * data = reinterpret_cast<GLibMatterContextInvokeData *>(userData_);
+                std::unique_lock<std::mutex> lock_(PlatformMgrImpl().mGLibMainLoopCallbackIndirectionMutex);
+                data->mDone = true;
+                data->mDoneCond.notify_one();
+                return G_SOURCE_REMOVE;
+            },
+            &invokeData, nullptr);
+        GLibMatterContextAttachSource(idleSource);
+        g_source_unref(idleSource);
+
+        invokeData.mDoneCond.wait(lock, [&invokeData]() { return invokeData.mDone; });
     }
 
 #endif
@@ -247,69 +274,50 @@ void PlatformManagerImpl::_Shutdown()
     Internal::GenericPlatformManagerImpl_POSIX<PlatformManagerImpl>::_Shutdown();
 
 #if CHIP_DEVICE_CONFIG_WITH_GLIB_MAIN_LOOP
-    g_main_loop_quit(mGLibMainLoop);
-    g_main_loop_unref(mGLibMainLoop);
-    g_thread_join(mGLibMainLoopThread);
+    if (mGLibMainLoop != nullptr)
+    {
+        g_main_loop_quit(mGLibMainLoop);
+        g_thread_join(mGLibMainLoopThread);
+        g_main_loop_unref(mGLibMainLoop);
+        mGLibMainLoop = nullptr;
+    }
 #endif
 }
 
 #if CHIP_DEVICE_CONFIG_WITH_GLIB_MAIN_LOOP
-
-void PlatformManagerImpl::CallbackIndirection::Wait(std::unique_lock<std::mutex> & lock)
+void PlatformManagerImpl::_GLibMatterContextInvokeSync(LambdaBridge && bridge)
 {
-    mDoneCond.wait(lock, [this]() { return mDone; });
-}
+    // Because of TSAN false positives, we need to use a mutex to synchronize access to all members of
+    // the GLibMatterContextInvokeData object (including constructor and destructor). This is a temporary
+    // workaround until TSAN-enabled GLib will be used in our CI.
+    std::unique_lock<std::mutex> lock(mGLibMainLoopCallbackIndirectionMutex);
 
-gboolean PlatformManagerImpl::CallbackIndirection::Callback(CallbackIndirection * self)
-{
-    // We can not access "self" before acquiring the lock, because TSAN will complain that
-    // there is a race condition between the thread that created the object and the thread
-    // that is executing the callback.
-    std::unique_lock<std::mutex> lock(PlatformMgrImpl().mGLibMainLoopCallbackIndirectionMutex);
-
-    auto callback = self->mCallback;
-    auto userData = self->mUserData;
+    GLibMatterContextInvokeData invokeData{ std::move(bridge) };
 
     lock.unlock();
-    auto result = callback(userData);
+
+    g_main_context_invoke_full(
+        g_main_loop_get_context(mGLibMainLoop), G_PRIORITY_HIGH_IDLE,
+        [](void * userData_) {
+            auto * data = reinterpret_cast<GLibMatterContextInvokeData *>(userData_);
+
+            // XXX: Temporary workaround for TSAN false positives.
+            std::unique_lock<std::mutex> lock_(PlatformMgrImpl().mGLibMainLoopCallbackIndirectionMutex);
+
+            lock_.unlock();
+            data->bridge();
+            lock_.lock();
+
+            data->mDone = true;
+            data->mDoneCond.notify_one();
+
+            return G_SOURCE_REMOVE;
+        },
+        &invokeData, nullptr);
+
     lock.lock();
-
-    self->mDone = true;
-    self->mDoneCond.notify_all();
-
-    return result;
+    invokeData.mDoneCond.wait(lock, [&invokeData]() { return invokeData.mDone; });
 }
-
-#if CHIP_DEVICE_CONFIG_ENABLE_CHIPOBLE
-CHIP_ERROR PlatformManagerImpl::RunOnGLibMainLoopThread(GSourceFunc callback, void * userData, bool wait)
-{
-
-    GMainContext * context = g_main_loop_get_context(mGLibMainLoop);
-    VerifyOrReturnError(context != nullptr,
-                        (ChipLogDetail(DeviceLayer, "Failed to get GLib main loop context"), CHIP_ERROR_INTERNAL));
-
-    // If we've been called from the GLib main loop thread itself, there is no reason to wait
-    // for the callback, as it will be executed immediately by the g_main_context_invoke() call
-    // below. Using a callback indirection in this case would cause a deadlock.
-    if (g_main_context_is_owner(context))
-    {
-        wait = false;
-    }
-
-    if (wait)
-    {
-        std::unique_lock<std::mutex> lock(mGLibMainLoopCallbackIndirectionMutex);
-        CallbackIndirection indirection(callback, userData);
-        g_main_context_invoke(context, G_SOURCE_FUNC(&CallbackIndirection::Callback), &indirection);
-        indirection.Wait(lock);
-        return CHIP_NO_ERROR;
-    }
-
-    g_main_context_invoke(context, callback, userData);
-    return CHIP_NO_ERROR;
-}
-#endif // CHIP_DEVICE_CONFIG_ENABLE_CHIPOBLE
-
 #endif // CHIP_DEVICE_CONFIG_WITH_GLIB_MAIN_LOOP
 
 } // namespace DeviceLayer

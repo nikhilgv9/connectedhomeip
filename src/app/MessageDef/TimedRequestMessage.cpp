@@ -49,7 +49,7 @@ CHIP_ERROR TimedRequestMessage::Parser::PrettyPrint() const
             }
 #endif // CHIP_DETAIL_LOGGING
             break;
-        case kInteractionModelRevisionTag:
+        case Revision::kInteractionModelRevisionTag:
             ReturnErrorOnFailure(MessageParser::CheckInteractionModelRevision(reader));
             break;
         default:
@@ -78,7 +78,7 @@ TimedRequestMessage::Builder & TimedRequestMessage::Builder::TimeoutMs(const uin
     // skip if error has already been set
     if (mError == CHIP_NO_ERROR)
     {
-        mError = mpWriter->Put(TLV::ContextTag(to_underlying(Tag::kTimeoutMs)), aTimeoutMs);
+        mError = mpWriter->Put(TLV::ContextTag(Tag::kTimeoutMs), aTimeoutMs);
     }
     if (mError == CHIP_NO_ERROR)
     {

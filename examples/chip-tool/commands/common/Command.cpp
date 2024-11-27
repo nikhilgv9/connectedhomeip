@@ -17,12 +17,18 @@
  */
 
 #include "Command.h"
+#include "CustomStringPrefix.h"
+#include "HexConversion.h"
 #include "platform/PlatformManager.h"
 
+#include <functional>
 #include <netdb.h>
 #include <sstream>
+#include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
+
+#include <math.h> // For INFINITY
 
 #include <lib/core/CHIPSafeCasts.h>
 #include <lib/support/BytesToHex.h>
@@ -30,9 +36,10 @@
 #include <lib/support/CodeUtils.h>
 #include <lib/support/SafeInt.h>
 #include <lib/support/ScopedBuffer.h>
+#include <lib/support/StringSplitter.h>
 #include <lib/support/logging/CHIPLogging.h>
 
-constexpr const char * kOptionalArgumentPrefix = "--";
+constexpr char kOptionalArgumentPrefix[]       = "--";
 constexpr size_t kOptionalArgumentPrefixLength = 2;
 
 bool Command::InitArguments(int argc, char ** argv)
@@ -48,6 +55,10 @@ bool Command::InitArguments(int argc, char ** argv)
         {
             optionalArgsCount++;
         }
+        else if (argvExtraArgsCount == 0)
+        {
+            mandatoryArgsCount++;
+        }
         else
         {
             mandatoryArgsCount++;
@@ -55,7 +66,7 @@ bool Command::InitArguments(int argc, char ** argv)
         }
     }
 
-    VerifyOrExit((size_t)(argc) >= mandatoryArgsCount && (argvExtraArgsCount == 0 || (argvExtraArgsCount && optionalArgsCount)),
+    VerifyOrExit((size_t) (argc) >= mandatoryArgsCount && (argvExtraArgsCount == 0 || (argvExtraArgsCount && optionalArgsCount)),
                  ChipLogError(chipTool, "InitArgs: Wrong arguments number: %d instead of %u", argc,
                               static_cast<unsigned int>(mandatoryArgsCount)));
 
@@ -206,6 +217,9 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
     switch (arg.type)
     {
     case ArgumentType::Complex: {
+        // Complex arguments may be optional, but they are not currently supported via the <chip::Optional> class.
+        // Instead, they must be explicitly specified as optional using the kOptional flag,
+        // and the base TypedComplexArgument<T> class is still referenced.
         auto complexArgument = static_cast<ComplexArgument *>(arg.value);
         return CHIP_NO_ERROR == complexArgument->Parse(arg.name, argValue);
     }
@@ -215,6 +229,29 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
         return CHIP_NO_ERROR == customArgument->Parse(arg.name, argValue);
     }
 
+    case ArgumentType::VectorString: {
+        std::vector<std::string> vectorArgument;
+
+        chip::StringSplitter splitter(argValue, ',');
+        chip::CharSpan value;
+
+        while (splitter.Next(value))
+        {
+            vectorArgument.push_back(std::string(value.data(), value.size()));
+        }
+
+        if (arg.flags == Argument::kOptional)
+        {
+            auto argument = static_cast<chip::Optional<std::vector<std::string>> *>(arg.value);
+            argument->SetValue(vectorArgument);
+        }
+        else
+        {
+            auto argument = static_cast<std::vector<std::string> *>(arg.value);
+            *argument     = vectorArgument;
+        }
+        return true;
+    }
     case ArgumentType::VectorBool: {
         // Currently only chip::Optional<std::vector<bool>> is supported.
         if (arg.flags != Argument::kOptional)
@@ -315,8 +352,9 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
             // By default the parameter separator is ";" in order to not collapse with the argument itself if it contains commas
             // (e.g a struct argument with multiple fields). In case one needs to use ";" it can be overriden with the following
             // environment variable.
-            constexpr const char * kSeparatorVariable = "CHIPTOOL_CUSTOM_ARGUMENTS_SEPARATOR";
-            getline(ss, valueAsString, getenv(kSeparatorVariable) ? getenv(kSeparatorVariable)[0] : ';');
+            static constexpr char kSeparatorVariable[] = "CHIPTOOL_CUSTOM_ARGUMENTS_SEPARATOR";
+            char * getenvSeparatorVariableResult       = getenv(kSeparatorVariable);
+            getline(ss, valueAsString, getenvSeparatorVariableResult ? getenvSeparatorVariableResult[0] : ';');
 
             CustomArgument * customArgument = new CustomArgument();
             vectorArgument->push_back(customArgument);
@@ -324,19 +362,6 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
         }
 
         return true;
-    }
-
-    case ArgumentType::Attribute: {
-        if (arg.isOptional() || arg.isNullable())
-        {
-            isValidArgument = false;
-        }
-        else
-        {
-            char * value    = reinterpret_cast<char *>(arg.value);
-            isValidArgument = (strcmp(argValue, value) == 0);
-        }
-        break;
     }
 
     case ArgumentType::String: {
@@ -360,10 +385,9 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
             // We support two ways to pass an octet string argument.  If it happens
             // to be all-ASCII, you can just pass it in.  Otherwise you can pass in
             // "hex:" followed by the hex-encoded bytes.
-            size_t argLen                     = strlen(argValue);
-            static constexpr char hexPrefix[] = "hex:";
-            constexpr size_t prefixLen        = ArraySize(hexPrefix) - 1; // Don't count the null
-            if (strncmp(argValue, hexPrefix, prefixLen) == 0)
+            size_t argLen = strlen(argValue);
+
+            if (IsHexString(argValue))
             {
                 // Hex-encoded.  Decode it into a temporary buffer first, so if we
                 // run into errors we can do correct "argument is not valid" logging
@@ -374,13 +398,16 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
                 // representation is always longer than the octet string it encodes,
                 // so we have enough space in argValue for the decoded version.
                 chip::Platform::ScopedMemoryBuffer<uint8_t> buffer;
-                if (!buffer.Calloc(argLen)) // Bigger than needed, but it's fine.
-                {
-                    return false;
-                }
 
-                size_t octetCount = chip::Encoding::HexToBytes(argValue + prefixLen, argLen - prefixLen, buffer.Get(), argLen);
-                if (octetCount == 0)
+                size_t octetCount;
+                CHIP_ERROR err = HexToBytes(
+                    chip::CharSpan(argValue + kHexStringPrefixLen, argLen - kHexStringPrefixLen),
+                    [&buffer](size_t allocSize) {
+                        buffer.Calloc(allocSize);
+                        return buffer.Get();
+                    },
+                    &octetCount);
+                if (err != CHIP_NO_ERROR)
                 {
                     return false;
                 }
@@ -391,13 +418,11 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
             }
 
             // Just ASCII.  Check for the "str:" prefix.
-            static constexpr char strPrefix[] = "str:";
-            constexpr size_t strPrefixLen     = ArraySize(strPrefix) - 1; // Don't         count the null
-            if (strncmp(argValue, strPrefix, strPrefixLen) == 0)
+            if (IsStrString(argValue))
             {
                 // Skip the prefix
-                argValue += strPrefixLen;
-                argLen -= strPrefixLen;
+                argValue += kStrStringPrefixLen;
+                argLen -= kStrStringPrefixLen;
             }
             *value = chip::ByteSpan(chip::Uint8::from_char(argValue), argLen);
             return true;
@@ -541,6 +566,18 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
 
     case ArgumentType::Float: {
         isValidArgument = HandleNullableOptional<float>(arg, argValue, [&](auto * value) {
+            if (strcmp(argValue, "Infinity") == 0)
+            {
+                *value = INFINITY;
+                return true;
+            }
+
+            if (strcmp(argValue, "-Infinity") == 0)
+            {
+                *value = -INFINITY;
+                return true;
+            }
+
             std::stringstream ss;
             ss << argValue;
             ss >> *value;
@@ -551,6 +588,18 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
 
     case ArgumentType::Double: {
         isValidArgument = HandleNullableOptional<double>(arg, argValue, [&](auto * value) {
+            if (strcmp(argValue, "Infinity") == 0)
+            {
+                *value = INFINITY;
+                return true;
+            }
+
+            if (strcmp(argValue, "-Infinity") == 0)
+            {
+                *value = -INFINITY;
+                return true;
+            }
+
             std::stringstream ss;
             ss << argValue;
             ss >> *value;
@@ -574,16 +623,14 @@ bool Command::InitArgument(size_t argIndex, char * argValue)
     return isValidArgument;
 }
 
-size_t Command::AddArgument(const char * name, const char * value, const char * desc, uint8_t flags)
+void Command::AddArgument(const char * name, const char * value, const char * desc)
 {
-    Argument arg;
-    arg.type  = ArgumentType::Attribute;
+    ReadOnlyGlobalCommandArgument arg;
     arg.name  = name;
-    arg.value = const_cast<void *>(reinterpret_cast<const void *>(value));
-    arg.flags = flags;
+    arg.value = value;
     arg.desc  = desc;
 
-    return AddArgumentToList(std::move(arg));
+    mReadOnlyGlobalCommandArgument.SetValue(arg);
 }
 
 size_t Command::AddArgument(const char * name, char ** value, const char * desc, uint8_t flags)
@@ -692,13 +739,13 @@ size_t Command::AddArgument(const char * name, int64_t min, uint64_t max, chip::
     return AddArgumentToList(std::move(arg));
 }
 
-size_t Command::AddArgument(const char * name, ComplexArgument * value, const char * desc)
+size_t Command::AddArgument(const char * name, ComplexArgument * value, const char * desc, uint8_t flags)
 {
     Argument arg;
     arg.type  = ArgumentType::Complex;
     arg.name  = name;
     arg.value = static_cast<void *>(value);
-    arg.flags = 0;
+    arg.flags = flags;
     arg.desc  = desc;
 
     return AddArgumentToList(std::move(arg));
@@ -783,6 +830,30 @@ size_t Command::AddArgument(const char * name, int64_t min, uint64_t max, void *
     return AddArgumentToList(std::move(arg));
 }
 
+size_t Command::AddArgument(const char * name, std::vector<std::string> * value, const char * desc)
+{
+    Argument arg;
+    arg.type  = ArgumentType::VectorString;
+    arg.name  = name;
+    arg.value = static_cast<void *>(value);
+    arg.flags = 0;
+    arg.desc  = desc;
+
+    return AddArgumentToList(std::move(arg));
+}
+
+size_t Command::AddArgument(const char * name, chip::Optional<std::vector<std::string>> * value, const char * desc)
+{
+    Argument arg;
+    arg.type  = ArgumentType::VectorString;
+    arg.name  = name;
+    arg.value = static_cast<void *>(value);
+    arg.flags = Argument::kOptional;
+    arg.desc  = desc;
+
+    return AddArgumentToList(std::move(arg));
+}
+
 const char * Command::GetArgumentName(size_t index) const
 {
     if (index < mArgs.size())
@@ -803,31 +874,36 @@ const char * Command::GetArgumentDescription(size_t index) const
     return nullptr;
 }
 
-const char * Command::GetAttribute(void) const
+const char * Command::GetReadOnlyGlobalCommandArgument() const
 {
-    size_t argsCount = mArgs.size();
-    for (size_t i = 0; i < argsCount; i++)
+    if (GetAttribute())
     {
-        Argument arg = mArgs.at(i);
-        if (arg.type == ArgumentType::Attribute)
-        {
-            return reinterpret_cast<const char *>(arg.value);
-        }
+        return GetAttribute();
+    }
+
+    if (GetEvent())
+    {
+        return GetEvent();
     }
 
     return nullptr;
 }
 
-const char * Command::GetEvent(void) const
+const char * Command::GetAttribute() const
 {
-    size_t argsCount = mArgs.size();
-    for (size_t i = 0; i < argsCount; i++)
+    if (mReadOnlyGlobalCommandArgument.HasValue())
     {
-        Argument arg = mArgs.at(i);
-        if (arg.type == ArgumentType::Attribute)
-        {
-            return reinterpret_cast<const char *>(arg.value);
-        }
+        return mReadOnlyGlobalCommandArgument.Value().value;
+    }
+
+    return nullptr;
+}
+
+const char * Command::GetEvent() const
+{
+    if (mReadOnlyGlobalCommandArgument.HasValue())
+    {
+        return mReadOnlyGlobalCommandArgument.Value().value;
     }
 
     return nullptr;
@@ -887,13 +963,20 @@ void Command::ResetArguments()
             switch (type)
             {
             case ArgumentType::Complex: {
-                // No optional complex arguments so far.
-                VerifyOrDie(false);
+                // Optional Complex arguments are not currently supported via the <chip::Optional> class.
+                // Instead, they must be explicitly specified as optional using the kOptional flag,
+                // and the base TypedComplexArgument<T> class is referenced.
+                auto argument = static_cast<ComplexArgument *>(arg.value);
+                argument->Reset();
                 break;
             }
             case ArgumentType::Custom: {
                 // No optional custom arguments so far.
                 VerifyOrDie(false);
+                break;
+            }
+            case ArgumentType::VectorString: {
+                ResetOptionalArg<std::vector<std::string>>(arg);
                 break;
             }
             case ArgumentType::VectorBool: {
@@ -911,11 +994,6 @@ void Command::ResetArguments()
             }
             case ArgumentType::VectorCustom: {
                 // No optional VectorCustom arguments so far.
-                VerifyOrDie(false);
-                break;
-            }
-            case ArgumentType::Attribute: {
-                // No optional Attribute arguments so far.
                 VerifyOrDie(false);
                 break;
             }
@@ -995,6 +1073,11 @@ void Command::ResetArguments()
                 auto vectorArgument = static_cast<std::vector<uint32_t> *>(arg.value);
                 vectorArgument->clear();
             }
+            else if (type == ArgumentType::Custom)
+            {
+                auto argument = static_cast<CustomArgument *>(arg.value);
+                argument->Reset();
+            }
             else if (type == ArgumentType::VectorCustom)
             {
                 auto vectorArgument = static_cast<std::vector<CustomArgument *> *>(arg.value);
@@ -1003,6 +1086,11 @@ void Command::ResetArguments()
                     delete customArgument;
                 }
                 vectorArgument->clear();
+            }
+            else if (type == ArgumentType::Complex)
+            {
+                auto argument = static_cast<ComplexArgument *>(arg.value);
+                argument->Reset();
             }
         }
     }

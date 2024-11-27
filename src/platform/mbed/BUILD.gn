@@ -30,7 +30,6 @@ static_library("mbed") {
     "DiagnosticDataProviderImpl.h",
     "KeyValueStoreManagerImpl.cpp",
     "KeyValueStoreManagerImpl.h",
-    "Logging.cpp",
     "MbedConfig.cpp",
     "MbedEventTimeout.cpp",
     "NetworkCommissioningDriver.h",
@@ -40,6 +39,7 @@ static_library("mbed") {
   ]
 
   public_deps = [ "${chip_root}/src/platform:platform_base" ]
+  deps = [ "${chip_root}/src/platform/logging:headers" ]
 
   if (chip_enable_wifi) {
     sources += [
@@ -47,4 +47,17 @@ static_library("mbed") {
       "NetworkCommissioningWiFiDriver.cpp",
     ]
   }
+
+  cflags = [ "-Wconversion" ]
+}
+
+source_set("logging") {
+  deps = [
+    "${chip_root}/src/platform:platform_base",
+    "${chip_root}/src/platform/logging:headers",
+  ]
+  sources = [
+    "Logging.cpp",
+    "Logging.h",
+  ]
 }

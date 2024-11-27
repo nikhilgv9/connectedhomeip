@@ -1,6 +1,6 @@
 /*
  *
- *    Copyright (c) 2022 Project CHIP Authors
+ *    Copyright (c) 2022-2024 Project CHIP Authors
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -24,11 +24,19 @@
 #ifndef MBEDTLS_TSLR9_CONF_H
 #define MBEDTLS_TSLR9_CONF_H
 
+#ifdef MBEDTLS_PLATFORM_MEMORY
+#undef MBEDTLS_PLATFORM_MEMORY
+#endif
+
+#ifdef MBEDTLS_MEMORY_BUFFER_ALLOC_C
+#undef MBEDTLS_MEMORY_BUFFER_ALLOC_C
+#endif
+
 #define MBEDTLS_HKDF_C
+#define MBEDTLS_PKCS5_C
 #define MBEDTLS_X509_CREATE_C
 #define MBEDTLS_X509_CSR_WRITE_C
 
-#define MBEDTLS_AES_ALT
-#define MBEDTLS_ECP_ALT
+#undef MBEDTLS_ERROR_C
 
 #endif /* MBEDTLS_TSLR9_CONF_H */

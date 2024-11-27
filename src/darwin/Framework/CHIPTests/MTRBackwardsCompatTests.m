@@ -20,19 +20,17 @@
 
 #import "MTRErrorTestUtils.h"
 #import "MTRTestKeys.h"
+#import "MTRTestResetCommissioneeHelper.h"
 #import "MTRTestStorage.h"
-
-#import <app/util/af-enums.h>
 
 #import <math.h> // For INFINITY
 
 // system dependencies
 #import <XCTest/XCTest.h>
 
-// Set the following to 1 in order to run individual test case manually.
-#define MANUAL_INDIVIDUAL_TEST 0
+// Fixture: chip-all-clusters-app --KVS "$(mktemp -t chip-test-kvs)" --interface-id -1
 
-static const uint16_t kPairingTimeoutInSeconds = 10;
+static const uint16_t kPairingTimeoutInSeconds = 30;
 static const uint16_t kCASESetupTimeoutInSeconds = 30;
 static const uint16_t kTimeoutInSeconds = 3;
 static const uint64_t kDeviceId = 0x12344321;
@@ -75,7 +73,7 @@ static MTRBaseDevice * GetConnectedDevice(void)
     XCTAssertEqual(error.code, 0);
 
     NSError * commissionError = nil;
-    [sController commissionDevice:kDeviceId commissioningParams:[[MTRCommissioningParameters alloc] init] error:&commissionError];
+    XCTAssertTrue([sController commissionDevice:kDeviceId commissioningParams:[[MTRCommissioningParameters alloc] init] error:&commissionError]);
     XCTAssertNil(commissionError);
 
     // Keep waiting for onCommissioningComplete
@@ -95,23 +93,11 @@ static MTRBaseDevice * GetConnectedDevice(void)
 
 @implementation MTRBackwardsCompatTests
 
-- (void)setUp
++ (void)setUp
 {
     [super setUp];
-    [self setContinueAfterFailure:NO];
-}
 
-- (void)tearDown
-{
-#if MANUAL_INDIVIDUAL_TEST
-    [self shutdownStack];
-#endif
-    [super tearDown];
-}
-
-- (void)initStack
-{
-    XCTestExpectation * expectation = [self expectationWithDescription:@"Pairing Complete"];
+    XCTestExpectation * expectation = [[XCTestExpectation alloc] initWithDescription:@"Pairing Complete"];
 
     __auto_type * factory = [MTRControllerFactory sharedInstance];
     XCTAssertNotNil(factory);
@@ -119,18 +105,13 @@ static MTRBaseDevice * GetConnectedDevice(void)
     __auto_type * storage = [[MTRTestStorage alloc] init];
     __auto_type * factoryParams = [[MTRControllerFactoryParams alloc] initWithStorage:storage];
     factoryParams.port = @(kLocalPort);
+    XCTAssertTrue([factory startup:factoryParams]);
 
-    BOOL ok = [factory startup:factoryParams];
-    XCTAssertTrue(ok);
-
-    __auto_type * testKeys = [[MTRTestKeys alloc] init];
-    XCTAssertNotNil(testKeys);
-
-    sTestKeys = testKeys;
+    XCTAssertNotNil(sTestKeys = [[MTRTestKeys alloc] init]);
 
     // Needs to match what startControllerOnExistingFabric calls elsewhere in
     // this file do.
-    __auto_type * params = [[MTRDeviceControllerStartupParams alloc] initWithSigningKeypair:testKeys fabricId:1 ipk:testKeys.ipk];
+    __auto_type * params = [[MTRDeviceControllerStartupParams alloc] initWithSigningKeypair:sTestKeys fabricId:1 ipk:sTestKeys.ipk];
     params.vendorId = @(kTestVendorId);
 
     MTRDeviceController * controller = [factory startControllerOnNewFabric:params];
@@ -148,12 +129,12 @@ static MTRBaseDevice * GetConnectedDevice(void)
     XCTAssertNotNil(payload);
     XCTAssertNil(error);
 
-    [controller setupCommissioningSessionWithPayload:payload newNodeID:@(kDeviceId) error:&error];
+    XCTAssertTrue([controller setupCommissioningSessionWithPayload:payload newNodeID:@(kDeviceId) error:&error]);
     XCTAssertNil(error);
 
-    [self waitForExpectationsWithTimeout:kPairingTimeoutInSeconds handler:nil];
+    XCTAssertEqual([XCTWaiter waitForExpectations:@[ expectation ] timeout:kPairingTimeoutInSeconds], XCTWaiterResultCompleted);
 
-    __block XCTestExpectation * connectionExpectation = [self expectationWithDescription:@"CASE established"];
+    __block XCTestExpectation * connectionExpectation = [[XCTestExpectation alloc] initWithDescription:@"CASE established"];
     [controller getBaseDevice:kDeviceId
                         queue:dispatch_get_main_queue()
             completionHandler:^(MTRBaseDevice * _Nullable device, NSError * _Nullable error) {
@@ -162,55 +143,54 @@ static MTRBaseDevice * GetConnectedDevice(void)
                 sConnectedDevice = device;
                 connectionExpectation = nil;
             }];
-    [self waitForExpectationsWithTimeout:kCASESetupTimeoutInSeconds handler:nil];
+    XCTAssertEqual([XCTWaiter waitForExpectations:@[ connectionExpectation ] timeout:kCASESetupTimeoutInSeconds], XCTWaiterResultCompleted);
 }
 
-- (void)shutdownStack
++ (void)tearDown
 {
-    MTRDeviceController * controller = sController;
-    XCTAssertNotNil(controller);
+    ResetCommissionee(GetConnectedDevice(), dispatch_get_main_queue(), nil, kTimeoutInSeconds);
 
-    [controller shutdown];
-    XCTAssertFalse([controller isRunning]);
-
+    [sController shutdown];
+    XCTAssertFalse([sController isRunning]);
     [[MTRControllerFactory sharedInstance] shutdown];
+
+    [super tearDown];
 }
 
-#if !MANUAL_INDIVIDUAL_TEST
-- (void)test000_SetUp
+- (void)setUp
 {
-    [self initStack];
+    [super setUp];
+    [self setContinueAfterFailure:NO];
 }
-#endif
 
-#define CHECK_RETURN_TYPE(sig, type)                                                                                               \
-    do {                                                                                                                           \
-        XCTAssertNotNil(sig);                                                                                                      \
-        XCTAssertTrue(strcmp([sig methodReturnType], @encode(type)) == 0);                                                         \
+#define CHECK_RETURN_TYPE(sig, type)                                       \
+    do {                                                                   \
+        XCTAssertNotNil(sig);                                              \
+        XCTAssertTrue(strcmp([sig methodReturnType], @encode(type)) == 0); \
     } while (0)
 
 /**
  * Arguments 0 and 1 are the implicit self and _cmd arguments; the real arguments begin at index 2.
  */
-#define CHECK_ARGUMENT(sig, index, type)                                                                                           \
-    do {                                                                                                                           \
-        XCTAssertTrue(strcmp([sig getArgumentTypeAtIndex:(index) + 2], @encode(type)) == 0);                                       \
+#define CHECK_ARGUMENT(sig, index, type)                                                     \
+    do {                                                                                     \
+        XCTAssertTrue(strcmp([sig getArgumentTypeAtIndex:(index) + 2], @encode(type)) == 0); \
     } while (0)
 
-#define CHECK_READONLY_PROPERTY(instance, propName, type)                                                                          \
-    do {                                                                                                                           \
-        NSMethodSignature * signature = [instance methodSignatureForSelector:@selector(propName)];                                 \
-        CHECK_RETURN_TYPE(signature, type);                                                                                        \
-        /* Check that getting the property directly compiles too */                                                                \
-        (void) instance.propName;                                                                                                  \
+#define CHECK_READONLY_PROPERTY(instance, propName, type)                                          \
+    do {                                                                                           \
+        NSMethodSignature * signature = [instance methodSignatureForSelector:@selector(propName)]; \
+        CHECK_RETURN_TYPE(signature, type);                                                        \
+        /* Check that getting the property directly compiles too */                                \
+        (void) instance.propName;                                                                  \
     } while (0)
 
-#define CHECK_PROPERTY(instance, propName, setterName, type)                                                                       \
-    do {                                                                                                                           \
-        CHECK_READONLY_PROPERTY(instance, propName, type);                                                                         \
-        NSMethodSignature * signature = [instance methodSignatureForSelector:@selector(setterName:)];                              \
-        CHECK_RETURN_TYPE(signature, void);                                                                                        \
-        CHECK_ARGUMENT(signature, 0, type);                                                                                        \
+#define CHECK_PROPERTY(instance, propName, setterName, type)                                          \
+    do {                                                                                              \
+        CHECK_READONLY_PROPERTY(instance, propName, type);                                            \
+        NSMethodSignature * signature = [instance methodSignatureForSelector:@selector(setterName:)]; \
+        CHECK_RETURN_TYPE(signature, void);                                                           \
+        CHECK_ARGUMENT(signature, 0, type);                                                           \
     } while (0)
 
 /**
@@ -1176,64 +1156,20 @@ static MTRBaseDevice * GetConnectedDevice(void)
     CHECK_RETURN_TYPE(sig, NSData *);
 }
 
-#if !MANUAL_INDIVIDUAL_TEST
-- (void)test999_TearDown
+- (void)test047_MTRGroupKeyManagementClusterKeySetReadAllIndicesParams
 {
-    // Put the device back in the state we found it: open commissioning window, no fabrics commissioned.
-    MTRBaseDevice * device = GetConnectedDevice();
-    dispatch_queue_t queue = dispatch_get_main_queue();
+    __auto_type * params = [[MTRGroupKeyManagementClusterKeySetReadAllIndicesParams alloc] init];
+    CHECK_PROPERTY(params, groupKeySetIDs, setGroupKeySetIDs, NSArray *);
 
-    // Get our current fabric index, for later deletion.
-    XCTestExpectation * readFabricIndexExpectation = [self expectationWithDescription:@"Fabric index read"];
-
-    __block NSNumber * fabricIndex;
-    __auto_type * opCredsCluster = [[MTRBaseClusterOperationalCredentials alloc] initWithDevice:device endpoint:0 queue:queue];
-    [opCredsCluster
-        readAttributeCurrentFabricIndexWithCompletionHandler:^(NSNumber * _Nullable value, NSError * _Nullable readError) {
-            XCTAssertNil(readError);
-            XCTAssertNotNil(value);
-            fabricIndex = value;
-            [readFabricIndexExpectation fulfill];
-        }];
-
-    [self waitForExpectations:@[ readFabricIndexExpectation ] timeout:kTimeoutInSeconds];
-
-    // Open a commissioning window.
-    XCTestExpectation * openCommissioningWindowExpectation = [self expectationWithDescription:@"Commissioning window opened"];
-
-    __auto_type * adminCommissioningCluster = [[MTRBaseClusterAdministratorCommissioning alloc] initWithDevice:device
-                                                                                                      endpoint:0
-                                                                                                         queue:queue];
-    __auto_type * openWindowParams = [[MTRAdministratorCommissioningClusterOpenBasicCommissioningWindowParams alloc] init];
-    openWindowParams.commissioningTimeout = @(900);
-    openWindowParams.timedInvokeTimeoutMs = @(50000);
-    [adminCommissioningCluster openBasicCommissioningWindowWithParams:openWindowParams
-                                                    completionHandler:^(NSError * _Nullable error) {
-                                                        XCTAssertNil(error);
-                                                        [openCommissioningWindowExpectation fulfill];
-                                                    }];
-
-    [self waitForExpectations:@[ openCommissioningWindowExpectation ] timeout:kTimeoutInSeconds];
-
-    // Remove our fabric from the device.
-    XCTestExpectation * removeFabricExpectation = [self expectationWithDescription:@"Fabric removed"];
-
-    __auto_type * removeParams = [[MTROperationalCredentialsClusterRemoveFabricParams alloc] init];
-    removeParams.fabricIndex = fabricIndex;
-
-    [opCredsCluster removeFabricWithParams:removeParams
-                         completionHandler:^(
-                             MTROperationalCredentialsClusterNOCResponseParams * _Nullable data, NSError * _Nullable removeError) {
-                             XCTAssertNil(removeError);
-                             XCTAssertNotNil(data);
-                             XCTAssertEqualObjects(data.statusCode, @(0));
-                             [removeFabricExpectation fulfill];
-                         }];
-
-    [self waitForExpectations:@[ removeFabricExpectation ] timeout:kTimeoutInSeconds];
-
-    [self shutdownStack];
+    params.groupKeySetIDs = @[ @(16) ];
+    XCTAssertEqualObjects(params.groupKeySetIDs, @[ @(16) ]);
 }
-#endif
+
+- (void)test048_MTRModeSelectClusterSemanticTagStruct
+{
+    __auto_type * obj = [[MTRModeSelectClusterSemanticTagStruct alloc] init];
+    CHECK_PROPERTY(obj, mfgCode, setMfgCode, NSNumber *);
+    CHECK_PROPERTY(obj, value, setValue, NSNumber *);
+}
 
 @end

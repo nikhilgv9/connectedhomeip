@@ -1,5 +1,5 @@
 #
-#    Copyright (c) 2021 Project CHIP Authors
+#    Copyright (c) 2021-2023 Project CHIP Authors
 #    All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +26,21 @@ include(${CMAKE_CURRENT_LIST_DIR}/third_party/connectedhomeip/examples/common/cm
 
 set(EXTRA_COMPONENT_DIRS
     "${CMAKE_CURRENT_LIST_DIR}/third_party/connectedhomeip/config/esp32/components"
-    "${CMAKE_CURRENT_LIST_DIR}/third_party/connectedhomeip/examples/common/QRCode"
-    "${IDF_PATH}/examples/common_components/led_strip"
+    "${CMAKE_CURRENT_LIST_DIR}/third_party/connectedhomeip/examples/common"
 )
 
+if(${IDF_TARGET} STREQUAL "esp32")
+    list(APPEND EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/third_party/connectedhomeip/examples/common/m5stack-tft/repo/components")
+endif()
+
+
 project(chip-lighting-app)
+
+# WARNING: This is just an example for using key for decrypting the encrypted OTA image
+# Please do not use it as is.
+if(CONFIG_ENABLE_ENCRYPTED_OTA)
+    target_add_binary_data(chip-lighting-app.elf "esp_image_encryption_key.pem" TEXT)
+endif()
 
 # C++17 is required for RPC build.
 idf_build_set_property(CXX_COMPILE_OPTIONS "-std=gnu++17;-Os;-DCHIP_HAVE_CONFIG_H" APPEND)
@@ -53,6 +63,10 @@ flashing_script()
 if (CONFIG_ENABLE_PW_RPC)
 get_filename_component(CHIP_ROOT ./third_party/connectedhomeip REALPATH)
 include(third_party/connectedhomeip/third_party/pigweed/repo/pw_build/pigweed.cmake)
+include($ENV{PW_ROOT}/pw_assert/backend.cmake)
+include($ENV{PW_ROOT}/pw_log/backend.cmake)
+include($ENV{PW_ROOT}/pw_sys_io/backend.cmake)
+include($ENV{PW_ROOT}/pw_trace/backend.cmake)
 
 pw_set_module_config(pw_rpc_CONFIG pw_rpc.disable_global_mutex_config)
 

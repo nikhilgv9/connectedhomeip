@@ -20,9 +20,11 @@
 #include <platform/PlatformManager.h>
 
 #include <app/clusters/network-commissioning/network-commissioning.h>
+#include <app/codegen-data-model-provider/Instance.h>
 #include <app/server/OnboardingCodesUtil.h>
 #include <app/server/Server.h>
 #include <crypto/CHIPCryptoPAL.h>
+#include <crypto/DefaultSessionKeystore.h>
 #include <lib/core/CHIPError.h>
 #include <lib/core/NodeId.h>
 #include <lib/support/logging/CHIPLogging.h>
@@ -59,7 +61,7 @@
 #endif
 
 #if defined(PW_RPC_ENABLED)
-#include <CommonRpc.h>
+#include <Rpc.h>
 #endif
 
 #if CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
@@ -68,7 +70,8 @@
 #endif // CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
 
 #if CHIP_DEVICE_CONFIG_ENABLE_OTA_REQUESTOR
-#include <app/clusters/ota-requestor/OTATestEventTriggerDelegate.h>
+#include <app/TestEventTriggerDelegate.h>
+#include <app/clusters/ota-requestor/OTATestEventTriggerHandler.h>
 #endif
 
 #include <signal.h>
@@ -76,12 +79,8 @@
 #include "AppMain.h"
 #include "CommissionableInit.h"
 
-#if CHIP_CRYPTO_HSM
 #include "DeviceAttestationSe05xCredsExample.h"
-#include "se05x_t4t_utils.h"
-#include <crypto/hsm/CHIPCryptoPALHsm.h>
-#include <crypto/hsm/nxp/PersistentStorageOperationalKeystoreHSM.h>
-#endif
+#include <CHIPCryptoPALHsm_se05x_config.h>
 
 using namespace chip;
 using namespace chip::ArgParser;
@@ -288,91 +287,12 @@ exit:
     return 0;
 }
 
-#ifdef ENABLE_HSM_EC_KEY
-
-struct CommonCaseDeviceServerInitParams_Se05x : public CommonCaseDeviceServerInitParams
+void ChipLinuxAppMainLoop(AppMainLoopImplementation * impl)
 {
-    CHIP_ERROR InitializeStaticResourcesBeforeServerInit() override
-    {
-        static chip::KvsPersistentStorageDelegate sKvsPersistenStorageDelegate;
-        static chip::PersistentStorageOperationalKeystoreHSM sPersistentStorageOperationalKeystore;
-        static chip::Credentials::PersistentStorageOpCertStore sPersistentStorageOpCertStore;
-        static chip::Credentials::GroupDataProviderImpl sGroupDataProvider;
-        static IgnoreCertificateValidityPolicy sDefaultCertValidityPolicy;
-
-#if CHIP_CONFIG_ENABLE_SESSION_RESUMPTION
-        static chip::SimpleSessionResumptionStorage sSessionResumptionStorage;
-#endif
-        static chip::app::DefaultAclStorage sAclStorage;
-
-        // KVS-based persistent storage delegate injection
-        if (persistentStorageDelegate == nullptr)
-        {
-            chip::DeviceLayer::PersistedStorage::KeyValueStoreManager & kvsManager =
-                DeviceLayer::PersistedStorage::KeyValueStoreMgr();
-            ReturnErrorOnFailure(sKvsPersistenStorageDelegate.Init(&kvsManager));
-            this->persistentStorageDelegate = &sKvsPersistenStorageDelegate;
-        }
-
-        // PersistentStorageDelegate "software-based" operational key access injection
-        if (this->operationalKeystore == nullptr)
-        {
-            // WARNING: PersistentStorageOperationalKeystore::Finish() is never called. It's fine for
-            //          for examples and for now.
-            ReturnErrorOnFailure(sPersistentStorageOperationalKeystore.Init(this->persistentStorageDelegate));
-            this->operationalKeystore = &sPersistentStorageOperationalKeystore;
-        }
-
-        // OpCertStore can be injected but default to persistent storage default
-        // for simplicity of the examples.
-        if (this->opCertStore == nullptr)
-        {
-            // WARNING: PersistentStorageOpCertStore::Finish() is never called. It's fine for
-            //          for examples and for now, since all storage is immediate for that impl.
-            ReturnErrorOnFailure(sPersistentStorageOpCertStore.Init(this->persistentStorageDelegate));
-            this->opCertStore = &sPersistentStorageOpCertStore;
-        }
-
-        // Group Data provider injection
-        sGroupDataProvider.SetStorageDelegate(this->persistentStorageDelegate);
-        ReturnErrorOnFailure(sGroupDataProvider.Init());
-        this->groupDataProvider = &sGroupDataProvider;
-
-#if CHIP_CONFIG_ENABLE_SESSION_RESUMPTION
-        ReturnErrorOnFailure(sSessionResumptionStorage.Init(this->persistentStorageDelegate));
-        this->sessionResumptionStorage = &sSessionResumptionStorage;
-#else
-        this->sessionResumptionStorage = nullptr;
-#endif
-
-        // Inject access control delegate
-        this->accessDelegate = Access::Examples::GetAccessControlDelegate();
-
-        // Inject ACL storage. (Don't initialize it.)
-        this->aclStorage = &sAclStorage;
-
-        // Inject certificate validation policy compatible with non-wall-clock-time-synced
-        // embedded systems.
-        this->certificateValidityPolicy = &sDefaultCertValidityPolicy;
-
-        return CHIP_NO_ERROR;
-    }
-};
-
-#endif
-
-void ChipLinuxAppMainLoop()
-{
-#ifdef ENABLE_HSM_EC_KEY
-    static CommonCaseDeviceServerInitParams_Se05x initParams;
-#else
     static chip::CommonCaseDeviceServerInitParams initParams;
-#endif
 
-#if CHIP_CRYPTO_HSM
-    VerifyOrDie(se05x_enable_contactless_interface() == 0);
-#endif
     VerifyOrDie(initParams.InitializeStaticResourcesBeforeServerInit() == CHIP_NO_ERROR);
+    initParams.dataModelProvider = app::CodegenDataModelProviderInstance();
 
 #if defined(ENABLE_CHIP_SHELL)
     Engine::Root().Init();
@@ -398,9 +318,12 @@ void ChipLinuxAppMainLoop()
     }
 
 #if CHIP_DEVICE_CONFIG_ENABLE_OTA_REQUESTOR
-    static OTATestEventTriggerDelegate testEventTriggerDelegate{ ByteSpan(
-        LinuxDeviceOptions::GetInstance().testEventTriggerEnableKey) };
-    initParams.testEventTriggerDelegate = &testEventTriggerDelegate;
+    static SimpleTestEventTriggerDelegate sTestEventTriggerDelegate{};
+    static OTATestEventTriggerHandler sOtaTestEventTriggerHandler{};
+    VerifyOrDie(sTestEventTriggerDelegate.Init(ByteSpan(LinuxDeviceOptions::GetInstance().testEventTriggerEnableKey)) ==
+                CHIP_NO_ERROR);
+    VerifyOrDie(sTestEventTriggerDelegate.AddHandler(&sOtaTestEventTriggerHandler) == CHIP_NO_ERROR);
+    initParams.testEventTriggerDelegate = &sTestEventTriggerDelegate;
 #endif
 
     // We need to set DeviceInfoProvider before Server::Init to setup the storage of DeviceInfoProvider properly.
@@ -417,7 +340,7 @@ void ChipLinuxAppMainLoop()
     PrintOnboardingCodes(LinuxDeviceOptions::GetInstance().payload);
 
     // Initialize device attestation config
-#ifdef ENABLE_HSM_DEVICE_ATTESTATION
+#if ENABLE_SE05X_DEVICE_ATTESTATION
     SetDeviceAttestationCredentialsProvider(Examples::GetExampleSe05xDACProvider());
 #else
     SetDeviceAttestationCredentialsProvider(LinuxDeviceOptions::GetInstance().dacProvider);
@@ -425,7 +348,7 @@ void ChipLinuxAppMainLoop()
 
 #if CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE
     ChipLogProgress(AppServer, "Starting commissioner");
-    VerifyOrReturn(InitCommissioner(LinuxDeviceOptions::GetInstance().securedCommissionerPort + 10,
+    VerifyOrReturn(InitCommissioner(LinuxDeviceOptions::GetInstance().securedCommissionerPort,
                                     LinuxDeviceOptions::GetInstance().unsecuredCommissionerPort) == CHIP_NO_ERROR);
     ChipLogProgress(AppServer, "Started commissioner");
 #if defined(ENABLE_CHIP_SHELL)
@@ -435,7 +358,14 @@ void ChipLinuxAppMainLoop()
 
     ApplicationInit();
 
-    DeviceLayer::PlatformMgr().RunEventLoop();
+    if (impl != nullptr)
+    {
+        impl->RunMainLoop();
+    }
+    else
+    {
+        DeviceLayer::PlatformMgr().RunEventLoop();
+    }
 
 #if CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE
     ShutdownCommissioner();

@@ -89,6 +89,16 @@ CHIP_ERROR GenericPlatformManagerImpl<ImplClass>::_InitChipStack()
     }
     SuccessOrExit(err);
 
+#if INET_CONFIG_ENABLE_TCP_ENDPOINT
+    // Initialize the CHIP TCP layer.
+    err = TCPEndPointManager()->Init(SystemLayer());
+    if (err != CHIP_NO_ERROR)
+    {
+        ChipLogError(DeviceLayer, "TCP initialization failed: %" CHIP_ERROR_FORMAT, err.Format());
+    }
+    SuccessOrExit(err);
+#endif
+
     // TODO Perform dynamic configuration of the core CHIP objects based on stored settings.
 
     // Initialize the CHIP BLE manager.
@@ -129,15 +139,19 @@ exit:
 template <class ImplClass>
 void GenericPlatformManagerImpl<ImplClass>::_Shutdown()
 {
-    ChipLogError(DeviceLayer, "Inet Layer shutdown");
+    ChipLogProgress(DeviceLayer, "Inet Layer shutdown");
     UDPEndPointManager()->Shutdown();
 
+#if INET_CONFIG_ENABLE_TCP_ENDPOINT
+    TCPEndPointManager()->Shutdown();
+#endif
+
 #if CHIP_DEVICE_CONFIG_ENABLE_CHIPOBLE
-    ChipLogError(DeviceLayer, "BLE shutdown");
+    ChipLogProgress(DeviceLayer, "BLE Layer shutdown");
     BLEMgr().Shutdown();
 #endif
 
-    ChipLogError(DeviceLayer, "System Layer shutdown");
+    ChipLogProgress(DeviceLayer, "System Layer shutdown");
     SystemLayer().Shutdown();
 }
 
@@ -216,18 +230,56 @@ void GenericPlatformManagerImpl<ImplClass>::_HandleServerShuttingDown()
 }
 
 template <class ImplClass>
-void GenericPlatformManagerImpl<ImplClass>::_ScheduleWork(AsyncWorkFunct workFunct, intptr_t arg)
+CHIP_ERROR GenericPlatformManagerImpl<ImplClass>::_ScheduleWork(AsyncWorkFunct workFunct, intptr_t arg)
 {
-    ChipDeviceEvent event;
-    event.Type                    = DeviceEventType::kCallWorkFunct;
-    event.CallWorkFunct.WorkFunct = workFunct;
-    event.CallWorkFunct.Arg       = arg;
-
-    CHIP_ERROR status = Impl()->PostEvent(&event);
-    if (status != CHIP_NO_ERROR)
+    ChipDeviceEvent event{ .Type = DeviceEventType::kCallWorkFunct };
+    event.CallWorkFunct = { .WorkFunct = workFunct, .Arg = arg };
+    CHIP_ERROR err      = Impl()->PostEvent(&event);
+    if (err != CHIP_NO_ERROR)
     {
-        ChipLogError(DeviceLayer, "Failed to schedule work: %" CHIP_ERROR_FORMAT, status.Format());
+        ChipLogError(DeviceLayer, "Failed to schedule work: %" CHIP_ERROR_FORMAT, err.Format());
     }
+    return err;
+}
+
+template <class ImplClass>
+CHIP_ERROR GenericPlatformManagerImpl<ImplClass>::_ScheduleBackgroundWork(AsyncWorkFunct workFunct, intptr_t arg)
+{
+    ChipDeviceEvent event{ .Type = DeviceEventType::kCallWorkFunct };
+    event.CallWorkFunct = { .WorkFunct = workFunct, .Arg = arg };
+    CHIP_ERROR err      = Impl()->PostBackgroundEvent(&event);
+    if (err != CHIP_NO_ERROR)
+    {
+        ChipLogError(DeviceLayer, "Failed to schedule background work: %" CHIP_ERROR_FORMAT, err.Format());
+    }
+    return err;
+}
+
+template <class ImplClass>
+CHIP_ERROR GenericPlatformManagerImpl<ImplClass>::_PostBackgroundEvent(const ChipDeviceEvent * event)
+{
+    // Impl class must override to implement background event processing
+    return Impl()->PostEvent(event);
+}
+
+template <class ImplClass>
+void GenericPlatformManagerImpl<ImplClass>::_RunBackgroundEventLoop(void)
+{
+    // Impl class must override to implement background event processing
+}
+
+template <class ImplClass>
+CHIP_ERROR GenericPlatformManagerImpl<ImplClass>::_StartBackgroundEventLoopTask(void)
+{
+    // Impl class must override to implement background event processing
+    return CHIP_NO_ERROR;
+}
+
+template <class ImplClass>
+CHIP_ERROR GenericPlatformManagerImpl<ImplClass>::_StopBackgroundEventLoopTask(void)
+{
+    // Impl class must override to implement background event processing
+    return CHIP_NO_ERROR;
 }
 
 template <class ImplClass>
@@ -292,9 +344,11 @@ template <class ImplClass>
 void GenericPlatformManagerImpl<ImplClass>::DispatchEventToApplication(const ChipDeviceEvent * event)
 {
     // Dispatch the event to each of the registered application event handlers.
-    for (AppEventHandler * eventHandler = mAppEventHandlerList; eventHandler != nullptr; eventHandler = eventHandler->Next)
+    for (AppEventHandler * eventHandler = mAppEventHandlerList; eventHandler != nullptr;)
     {
+        AppEventHandler * nextEventHandler = eventHandler->Next;
         eventHandler->Handler(event, eventHandler->Arg);
+        eventHandler = nextEventHandler;
     }
 }
 

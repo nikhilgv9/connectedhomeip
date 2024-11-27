@@ -27,9 +27,11 @@
 
 #if CONFIG_CHIP_FACTORY_DATA
 #include <platform/nrfconnect/FactoryDataProvider.h>
+#else
+#include <platform/nrfconnect/DeviceInstanceInfoProviderImpl.h>
 #endif
 
-#ifdef CONFIG_MCUMGR_SMP_BT
+#ifdef CONFIG_MCUMGR_TRANSPORT_BT
 #include "DFUOverSMP.h"
 #endif
 
@@ -65,8 +67,8 @@ private:
     static void FunctionHandler(const AppEvent & event);
     static void StartBLEAdvertisementAndLockActionEventHandler(const AppEvent & event);
     static void LockActionEventHandler(const AppEvent & event);
-    static void StartBLEAdvertisementHandler(const AppEvent & event);
     static void UpdateLedStateEventHandler(const AppEvent & event);
+    static void StartBLEAdvertisementHandler(const AppEvent & event);
 
     static void ChipEventHandler(const chip::DeviceLayer::ChipDeviceEvent * event, intptr_t arg);
     static void ButtonEventHandler(uint32_t buttonState, uint32_t hasChanged);
@@ -75,10 +77,6 @@ private:
     static void UpdateStatusLED();
 
     static void LockStateChanged(BoltLockManager::State state, BoltLockManager::OperationSource source);
-
-#ifdef CONFIG_MCUMGR_SMP_BT
-    static void RequestSMPAdvertisingStart(void);
-#endif
 
     FunctionEvent mFunction   = FunctionEvent::NoneSelected;
     bool mFunctionTimerActive = false;

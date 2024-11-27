@@ -16,18 +16,34 @@
  */
 
 #import <Foundation/Foundation.h>
+#import <Matter/Matter.h>
 #import <Security/Security.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@protocol MTRKeypair <NSObject>
-@required
 /**
- * @brief Return public key for the keypair.
+ * This protocol is used by the Matter framework to sign messages with a private
+ * key and verify signatures with a public key.
+ *
+ * The Matter framework may call keypair methods from arbitrary threads and
+ * concurrently.
+ *
+ * Implementations of the keypair methods must not call into any Matter
+ * framework APIs.
  */
-- (SecKeyRef)publicKey;
+@protocol MTRKeypair <NSObject>
 
 @optional
+/**
+ * @brief Returns a copy of the public key for the keypair.
+ */
+- (SecKeyRef)copyPublicKey MTR_NEWLY_AVAILABLE;
+
+/**
+ * @brief Returns public key for the keypair without adding a reference. DEPRECATED - please use copyPublicKey, otherwise this will leak.
+ */
+- (SecKeyRef)publicKey MTR_NEWLY_DEPRECATED("Please implement copyPublicKey, this will leak otherwise");
+
 /**
  * @brief A function to sign a message using ECDSA
  *

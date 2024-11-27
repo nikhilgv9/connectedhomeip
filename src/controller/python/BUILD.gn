@@ -18,8 +18,10 @@ import("//build_overrides/pigweed.gni")
 
 import("$dir_pw_build/python.gni")
 
+import("${chip_root}/build/chip/python_wheel.gni")
 import("${chip_root}/build/chip/tools.gni")
 import("${chip_root}/src/platform/python.gni")
+import("${chip_root}/src/system/system.gni")
 import("${dir_pw_unit_test}/test.gni")
 
 if (current_os == "mac") {
@@ -28,11 +30,6 @@ if (current_os == "mac") {
 
 config("controller_wno_deprecate") {
   cflags = [ "-Wno-deprecated-declarations" ]
-}
-
-declare_args() {
-  chip_python_version = "0.0"
-  chip_python_package_prefix = "chip"
 }
 
 shared_library("ChipDeviceCtrl") {
@@ -51,6 +48,8 @@ shared_library("ChipDeviceCtrl") {
 
   sources += [ "chip/native/CommonStackInit.cpp" ]
 
+  defines = []
+
   if (chip_controller) {
     sources += [
       "ChipCommissionableNodeController-ScriptBinding.cpp",
@@ -64,21 +63,46 @@ shared_library("ChipDeviceCtrl") {
       "ChipDeviceController-StorageDelegate.cpp",
       "ChipDeviceController-StorageDelegate.h",
       "OpCredsBinding.cpp",
+      "chip/bdx/bdx-transfer.cpp",
+      "chip/bdx/bdx-transfer.h",
+      "chip/bdx/bdx.cpp",
+      "chip/bdx/test-bdx-transfer-server.cpp",
+      "chip/bdx/test-bdx-transfer-server.h",
       "chip/clusters/attribute.cpp",
       "chip/clusters/command.cpp",
+      "chip/commissioning/PlaceholderOperationalCredentialsIssuer.h",
+      "chip/credentials/cert.cpp",
+      "chip/credentials/cert.h",
+      "chip/crypto/p256keypair.cpp",
+      "chip/crypto/p256keypair.h",
       "chip/discovery/NodeResolution.cpp",
+      "chip/icd/PyChipCheckInDelegate.cpp",
+      "chip/icd/PyChipCheckInDelegate.h",
       "chip/interaction_model/Delegate.cpp",
       "chip/interaction_model/Delegate.h",
       "chip/internal/ChipThreadWork.cpp",
       "chip/internal/ChipThreadWork.h",
       "chip/internal/CommissionerImpl.cpp",
+      "chip/logging/LoggingFilter.cpp",
       "chip/logging/LoggingRedirect.cpp",
+      "chip/native/ChipMainLoopWork.h",
       "chip/native/PyChipError.cpp",
+      "chip/native/PyChipError.h",
+      "chip/tracing/TracingSetup.cpp",
       "chip/utils/DeviceProxyUtils.cpp",
     ]
+    defines += [ "CHIP_CONFIG_MAX_GROUPS_PER_FABRIC=50" ]
+    defines += [ "CHIP_CONFIG_MAX_GROUP_KEYS_PER_FABRIC=50" ]
+
+    if (chip_python_supports_stack_locking) {
+      sources += [ "chip/native/ChipMainLoopWork_StackLock.cpp" ]
+    } else {
+      sources += [ "chip/native/ChipMainLoopWork_WorkSchedule.cpp" ]
+    }
   } else {
     sources += [
       "chip/server/Options.cpp",
+      "chip/server/Options.h",
       "chip/server/ServerInit.cpp",
     ]
   }
@@ -99,6 +123,7 @@ shared_library("ChipDeviceCtrl") {
 
   public_deps = [
     "${chip_root}/src/app",
+    "${chip_root}/src/app/icd/client:handler",
     "${chip_root}/src/app/server",
     "${chip_root}/src/credentials:default_attestation_verifier",
     "${chip_root}/src/lib",
@@ -106,6 +131,7 @@ shared_library("ChipDeviceCtrl") {
     "${chip_root}/src/lib/dnssd",
     "${chip_root}/src/lib/support",
     "${chip_root}/src/platform",
+    "${chip_root}/src/platform/logging:default",
     "${chip_root}/src/setup_payload",
     "${chip_root}/src/transport",
   ]
@@ -114,76 +140,22 @@ shared_library("ChipDeviceCtrl") {
     public_deps += [
       "${chip_root}/src/controller/data_model",
       "${chip_root}/src/credentials:file_attestation_trust_store",
+      "${chip_root}/src/lib/support:testing",
+      "${chip_root}/src/tracing/json",
+      "${chip_root}/src/tracing/perfetto",
+      "${chip_root}/src/tracing/perfetto:file_output",
       "${chip_root}/third_party/jsoncpp",
+    ]
+
+    deps = [
+      "${chip_root}/src/tracing/perfetto:event_storage",
+      "${chip_root}/src/tracing/perfetto:simple_initialization",
     ]
   } else {
     public_deps += [ "$chip_data_model" ]
   }
 
   configs += [ ":controller_wno_deprecate" ]
-}
-
-template("chip_python_wheel_action") {
-  _dist_dir = "${root_out_dir}/controller/python"
-
-  _py_manifest_file = "${target_gen_dir}/${target_name}.py_manifest.json"
-
-  pw_python_action(target_name) {
-    script = "build-chip-wheel.py"
-    forward_variables_from(invoker, "*")
-
-    _py_manifest_files_rebased = []
-    foreach(_manifest_entry, py_manifest_files) {
-      inputs += _manifest_entry.sources
-      _py_manifest_files_rebased += [
-        {
-          src_dir = rebase_path(_manifest_entry.src_dir,
-                                get_path_info(_py_manifest_file, "dir"))
-          sources =
-              rebase_path(_manifest_entry.sources, _manifest_entry.src_dir)
-        },
-      ]
-    }
-
-    if (defined(invoker.py_scripts)) {
-      _py_scripts = invoker.py_scripts
-    } else {
-      _py_scripts = []
-    }
-
-    _py_manifest = {
-      files = _py_manifest_files_rebased
-      packages = py_packages
-      scripts = _py_scripts
-      package_reqs = py_package_reqs
-    }
-
-    write_file(_py_manifest_file, _py_manifest, "json")
-
-    args = [
-      "--package_name",
-      py_package_name,
-      "--build_number",
-      chip_python_version,
-      "--build_dir",
-      rebase_path("${target_gen_dir}/${target_name}.py_build", root_build_dir),
-      "--dist_dir",
-      rebase_path(_dist_dir, root_build_dir),
-      "--manifest",
-      rebase_path(_py_manifest_file, root_build_dir),
-      "--plat-name",
-      py_platform_tag,
-    ]
-
-    if (defined(invoker.lib_name)) {
-      args += [
-        "--lib-name",
-        lib_name,
-      ]
-    }
-
-    outputs = [ "${_dist_dir}/$output_name" ]
-  }
 }
 
 chip_python_wheel_action("chip-core") {
@@ -196,10 +168,13 @@ chip_python_wheel_action("chip-core") {
         "chip/ChipBleUtility.py",
         "chip/ChipBluezMgr.py",
         "chip/ChipCommissionableNodeCtrl.py",
-        "chip/ChipCoreBluetoothMgr.py",
         "chip/ChipStack.py",
         "chip/FabricAdmin.py",
         "chip/__init__.py",
+        "chip/bdx/Bdx.py",
+        "chip/bdx/BdxProtocol.py",
+        "chip/bdx/BdxTransfer.py",
+        "chip/bdx/__init__.py",
         "chip/ble/__init__.py",
         "chip/ble/commissioning/__init__.py",
         "chip/ble/get_adapters.py",
@@ -209,7 +184,15 @@ chip_python_wheel_action("chip-core") {
         "chip/clusters/Attribute.py",
         "chip/clusters/Command.py",
         "chip/clusters/__init__.py",
+        "chip/commissioning/__init__.py",
+        "chip/commissioning/commissioning_flow_blocks.py",
+        "chip/commissioning/pase.py",
         "chip/configuration/__init__.py",
+        "chip/credentials/__init__.py",
+        "chip/credentials/cert.py",
+        "chip/crypto/__init__.py",
+        "chip/crypto/fabric.py",
+        "chip/crypto/p256keypair.py",
         "chip/discovery/__init__.py",
         "chip/discovery/library_handle.py",
         "chip/discovery/types.py",
@@ -227,28 +210,20 @@ chip_python_wheel_action("chip-core") {
         "chip/setup_payload/__init__.py",
         "chip/setup_payload/setup_payload.py",
         "chip/storage/__init__.py",
+        "chip/tracing/__init__.py",
         "chip/utils/CommissioningBuildingBlocks.py",
         "chip/utils/__init__.py",
         "chip/yaml/__init__.py",
-        "chip/yaml/constraints.py",
         "chip/yaml/data_model_lookup.py",
         "chip/yaml/errors.py",
         "chip/yaml/format_converter.py",
-        "chip/yaml/parser.py",
-        "chip/yaml/variable_storage.py",
+        "chip/yaml/runner.py",
       ]
 
       if (chip_controller) {
-        sources += [
-          "chip-device-ctrl.py",
-          "chip-repl.py",
-          "chip/ChipDeviceCtrl.py",
-        ]
+        sources += [ "chip/ChipDeviceCtrl.py" ]
       } else {
-        sources += [
-          "chip/server/__init__.py",
-          "chip/server/types.py",
-        ]
+        sources += [ "chip/server/__init__.py" ]
       }
     },
     {
@@ -269,10 +244,14 @@ chip_python_wheel_action("chip-core") {
 
   py_packages = [
     "chip",
+    "chip.bdx",
     "chip.ble",
     "chip.ble.commissioning",
     "chip.configuration",
+    "chip.commissioning",
     "chip.clusters",
+    "chip.credentials",
+    "chip.crypto",
     "chip.utils",
     "chip.discovery",
     "chip.exceptions",
@@ -284,6 +263,7 @@ chip_python_wheel_action("chip-core") {
     "chip.clusters",
     "chip.setup_payload",
     "chip.storage",
+    "chip.tracing",
   ]
 
   if (!chip_controller) {
@@ -298,19 +278,9 @@ chip_python_wheel_action("chip-core") {
     "pyyaml",
     "ipdb",
     "deprecation",
-    "mobly",
-
-    # Crypto libraries for complex tests and internal Python controller usage
     "cryptography",
-    "pycrypto",
     "ecdsa",
   ]
-
-  if (current_os == "mac") {
-    py_package_reqs += [ "pyobjc-framework-corebluetooth" ]
-  } else if (current_os == "linux") {
-    py_package_reqs += [ "pygobject" ]
-  }
 
   if (current_cpu == "x64") {
     cpu_tag = "x86_64"
@@ -360,7 +330,9 @@ chip_python_wheel_action("chip-clusters") {
         "chip/clusters/Objects.py",
         "chip/clusters/TestObjects.py",
         "chip/clusters/Types.py",
+        "chip/clusters/enum.py",
         "chip/tlv/__init__.py",
+        "chip/tlv/tlvlist.py",
       ]
     },
     {
@@ -377,7 +349,10 @@ chip_python_wheel_action("chip-clusters") {
     "chip.tlv",
   ]
 
-  py_package_reqs = [ "dacite" ]
+  py_package_reqs = [
+    "dacite",
+    "aenum",
+  ]
 
   py_package_name = "${chip_python_package_prefix}-clusters"
   py_package_output = string_replace(py_package_name, "-", "_")
@@ -387,15 +362,16 @@ chip_python_wheel_action("chip-clusters") {
 }
 
 chip_python_wheel_action("chip-repl") {
-  py_scripts = [
-    "chip-device-ctrl.py",
-    "chip-repl.py",
-  ]
+  py_scripts = [ "chip-repl.py" ]
 
   py_manifest_files = [
     {
       src_dir = "."
-      sources = [ "chip/ChipReplStartup.py" ]
+      sources = [
+        "chip/ChipBluezMgr.py",
+        "chip/ChipCoreBluetoothMgr.py",
+        "chip/ChipReplStartup.py",
+      ]
       sources += py_scripts
     },
     {
@@ -421,8 +397,16 @@ chip_python_wheel_action("chip-repl") {
     "ipython!=8.1.0",
     "rich",
     "ipykernel",
-    "mobly",
   ]
+
+  if (current_os == "mac") {
+    py_package_reqs += [ "pyobjc-framework-corebluetooth" ]
+  } else if (current_os == "linux") {
+    py_package_reqs += [
+      "dbus-python==1.2.18",
+      "pygobject",
+    ]
+  }
 
   py_package_name = "${chip_python_package_prefix}-repl"
   py_package_output = string_replace(py_package_name, "-", "_")

@@ -16,9 +16,9 @@
  *    limitations under the License.
  */
 
-#include "lib/core/CHIPTLV.h"
-#include "lib/core/CHIPTLVTags.h"
-#include "lib/core/CHIPTLVTypes.h"
+#include "lib/core/TLV.h"
+#include "lib/core/TLVTags.h"
+#include "lib/core/TLVTypes.h"
 #include "protocols/interaction_model/Constants.h"
 #include "system/SystemPacketBuffer.h"
 #include "system/TLVPacketBufferBackingStore.h"
@@ -40,6 +40,7 @@ void BufferedReadCallback::OnReportEnd()
     if (err != CHIP_NO_ERROR)
     {
         mCallback.OnError(err);
+        return;
     }
 
     mCallback.OnReportEnd();
@@ -64,7 +65,7 @@ CHIP_ERROR BufferedReadCallback::GenerateListTLV(TLV::ScopedBufferTLVReader & aR
     //
     // To avoid that, a single contiguous buffer is the best likely approach for now.
     //
-    uint32_t totalBufSize = 0;
+    size_t totalBufSize = 0;
     for (const auto & packetBuffer : mBufferedList)
     {
         totalBufSize += packetBuffer->TotalLength();

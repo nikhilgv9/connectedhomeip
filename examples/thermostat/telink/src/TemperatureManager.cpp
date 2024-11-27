@@ -18,17 +18,17 @@
 
 #include "TemperatureManager.h"
 #include "AppConfig.h"
-#include "AppEvent.h"
 #include "AppTask.h"
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_DECLARE(app);
+LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
 
 using namespace chip;
 using namespace ::chip::DeviceLayer;
 
 constexpr EndpointId kThermostatEndpoint = 1;
 
+using namespace ::chip::app::Clusters::Thermostat;
 namespace ThermAttr = chip::app::Clusters::Thermostat::Attributes;
 
 TemperatureManager TemperatureManager::sTempMgr;
@@ -37,7 +37,7 @@ CHIP_ERROR TemperatureManager::Init()
 {
     app::DataModel::Nullable<int16_t> temp;
     int16_t heatingSetpoint, coolingSetpoint;
-    uint8_t systemMode;
+    SystemModeEnum systemMode;
 
     PlatformMgr().LockChipStack();
     ThermAttr::LocalTemperature::Get(kThermostatEndpoint, temp);
@@ -49,7 +49,40 @@ CHIP_ERROR TemperatureManager::Init()
     mCurrentTempCelsius     = ConvertToPrintableTemp(temp.Value());
     mHeatingCelsiusSetPoint = ConvertToPrintableTemp(coolingSetpoint);
     mCoolingCelsiusSetPoint = ConvertToPrintableTemp(heatingSetpoint);
-    mThermMode              = systemMode;
+
+    switch (systemMode)
+    {
+    case SystemModeEnum::kOff:
+        mThermMode = 0;
+        break;
+    case SystemModeEnum::kAuto:
+        mThermMode = 1;
+        break;
+    case SystemModeEnum::kCool:
+        mThermMode = 3;
+        break;
+    case SystemModeEnum::kHeat:
+        mThermMode = 4;
+        break;
+    case SystemModeEnum::kEmergencyHeat:
+        mThermMode = 5;
+        break;
+    case SystemModeEnum::kPrecooling:
+        mThermMode = 6;
+        break;
+    case SystemModeEnum::kFanOnly:
+        mThermMode = 7;
+        break;
+    case SystemModeEnum::kDry:
+        mThermMode = 8;
+        break;
+    case SystemModeEnum::kSleep:
+        mThermMode = 9;
+        break;
+    default:
+        mThermMode = 2;
+        break; // unknown value;
+    }
 
     GetAppTask().UpdateThermoStatUI();
 

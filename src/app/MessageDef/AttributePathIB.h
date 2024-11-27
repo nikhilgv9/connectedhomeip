@@ -21,14 +21,14 @@
 #include "ListBuilder.h"
 #include "ListParser.h"
 
-#include <app/AppBuildConfig.h>
+#include <app/AppConfig.h>
 #include <app/AttributePathParams.h>
 #include <app/ConcreteAttributePath.h>
 #include <app/data-model/Nullable.h>
 #include <app/util/basic-types.h>
 #include <lib/core/CHIPCore.h>
-#include <lib/core/CHIPTLV.h>
 #include <lib/core/NodeId.h>
+#include <lib/core/TLV.h>
 #include <lib/support/CodeUtils.h>
 #include <lib/support/logging/CHIPLogging.h>
 
@@ -43,6 +43,12 @@ enum class Tag : uint8_t
     kCluster              = 3,
     kAttribute            = 4,
     kListIndex            = 5,
+};
+
+enum class ValidateIdRanges : uint8_t
+{
+    kYes,
+    kNo,
 };
 
 class Parser : public ListParser
@@ -131,14 +137,33 @@ public:
     CHIP_ERROR GetListIndex(DataModel::Nullable<ListIndex> * const apListIndex) const;
 
     /**
-     * @brief Get the ListIndex, and set the mListIndex and mListOp fields in the ConcreteDataAttributePath accordingly. It will set
-     * ListOp to NotList when the list index is missing, users should interpret it as ReplaceAll according to the context.
+     * @brief Get the concrete attribute path.  This will set the ListOp to
+     *        NotList when there is no ListIndex.  Consumers should interpret NotList
+     *        as ReplaceAll if that's appropriate to their context.
      *
-     *  @param [in] aAttributePath    The attribute path object for setting list index and list op.
+     *  @param [in] aAttributePath    The attribute path object to write to.
+     *  @param [in] aValidateRanges   Whether to validate that the cluster/attribute
+     *                                IDs in the path are in the right ranges.
      *
      *  @return #CHIP_NO_ERROR on success
      */
-    CHIP_ERROR GetListIndex(ConcreteDataAttributePath & aAttributePath) const;
+    CHIP_ERROR GetConcreteAttributePath(ConcreteDataAttributePath & aAttributePath,
+                                        ValidateIdRanges aValidateRanges = ValidateIdRanges::kYes) const;
+
+    /**
+     * @brief Get a group attribute path.  This will set the ListOp to
+     *        NotList when there is no ListIndex.  Consumers should interpret NotList
+     *        as ReplaceAll if that's appropriate to their context.  The
+     *        endpoint id of the resulting path might have any value.
+     *
+     *  @param [in] aAttributePath    The attribute path object to write to.
+     *  @param [in] aValidateRanges   Whether to validate that the cluster/attribute
+     *                                IDs in the path are in the right ranges.
+     *
+     *  @return #CHIP_NO_ERROR on success
+     */
+    CHIP_ERROR GetGroupAttributePath(ConcreteDataAttributePath & aAttributePath,
+                                     ValidateIdRanges aValidateRanges = ValidateIdRanges::kYes) const;
 
     // TODO(#14934) Add a function to get ConcreteDataAttributePath from AttributePathIB::Parser directly.
 
@@ -214,9 +239,9 @@ public:
     /**
      *  @brief Mark the end of this AttributePathIB
      *
-     *  @return A reference to *this
+     *  @return The builder's final status.
      */
-    AttributePathIB::Builder & EndOfAttributePathIB();
+    CHIP_ERROR EndOfAttributePathIB();
 
     CHIP_ERROR Encode(const AttributePathParams & aAttributePathParams);
     CHIP_ERROR Encode(const ConcreteDataAttributePath & aAttributePathParams);

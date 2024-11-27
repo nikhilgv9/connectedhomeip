@@ -16,16 +16,34 @@
  */
 
 #import <Foundation/Foundation.h>
+#import <Matter/MTRError.h>
+
+#import "MTRDefines_Internal.h"
 
 #include <app/MessageDef/StatusIB.h>
 #include <lib/core/CHIPError.h>
+#include <protocols/interaction_model/StatusCode.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
+MTR_DIRECT_MEMBERS
 @interface MTRError : NSObject
++ (NSError *)errorWithCode:(MTRErrorCode)code;
 + (NSError * _Nullable)errorForCHIPErrorCode:(CHIP_ERROR)errorCode;
++ (NSError * _Nullable)errorForCHIPErrorCode:(CHIP_ERROR)errorCode logContext:(id _Nullable)contextToLog;
 + (NSError * _Nullable)errorForIMStatus:(const chip::app::StatusIB &)status;
++ (NSError * _Nullable)errorForIMStatusCode:(chip::Protocols::InteractionModel::Status)status;
 + (CHIP_ERROR)errorToCHIPErrorCode:(NSError * _Nullable)error;
 @end
+
+// Similar to VerifyOrDie, but throws an NSInvalidArgumentException
+#define MTRVerifyArgumentOrDie(cond, reason) \
+    do {                                     \
+        if (mtr_unlikely(!(cond))) {         \
+            MTRThrowInvalidArgument(reason); \
+        }                                    \
+    } while (0)
+
+MTR_EXTERN _Noreturn void MTRThrowInvalidArgument(NSString * reason);
 
 NS_ASSUME_NONNULL_END

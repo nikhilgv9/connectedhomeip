@@ -25,6 +25,8 @@
 
 #pragma once
 
+#include <platform/ESP32/CHIPDevicePlatformConfig.h>
+
 #include <platform/ConnectivityManager.h>
 #include <platform/internal/GenericConfigurationManagerImpl.h>
 #if CHIP_DEVICE_CONFIG_ENABLE_CHIPOBLE
@@ -56,12 +58,21 @@ public:
     CHIP_ERROR GetSoftwareVersionString(char * buf, size_t bufSize);
     CHIP_ERROR GetSoftwareVersion(uint32_t & softwareVer) override;
     CHIP_ERROR GetLocationCapability(uint8_t & location) override;
+    CHIP_ERROR GetDeviceTypeId(uint32_t & deviceType) override;
     static ConfigurationManagerImpl & GetDefaultInstance();
+
+    // Set the country code to esp_phy layer and also store it to NVS
+    // GenericConfigurationManagerImpl::GetCountryCode() API already reads from the NVS so its not implemented here
+    CHIP_ERROR StoreCountryCode(const char * code, size_t codeLen) override;
 
 private:
     // ===== Members that implement the ConfigurationManager public interface.
 
     CHIP_ERROR Init(void) override;
+#if CHIP_DEVICE_CONFIG_ENABLE_ETHERNET
+    CHIP_ERROR GetPrimaryMACAddress(MutableByteSpan buf) override;
+    CHIP_ERROR GetPrimaryEthernetMACAddress(MutableByteSpan buf);
+#endif
     CHIP_ERROR GetPrimaryWiFiMACAddress(uint8_t * buf) override;
     bool CanFactoryReset(void) override;
     void InitiateFactoryReset(void) override;
@@ -88,6 +99,9 @@ private:
     // ===== Private members reserved for use by this class only.
 
     static void DoFactoryReset(intptr_t arg);
+
+    static uint32_t mTotalOperationalHours;
+    static void TotalOperationalHoursTimerCallback(TimerHandle_t timer);
 };
 
 /**

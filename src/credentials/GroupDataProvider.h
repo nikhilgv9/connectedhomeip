@@ -16,14 +16,14 @@
  */
 #pragma once
 
-#include <algorithm>
+#include <optional>
 #include <stdint.h>
 #include <sys/types.h>
 
-#include <app-common/zap-generated/cluster-objects.h>
 #include <app/util/basic-types.h>
 #include <crypto/CHIPCryptoPAL.h>
 #include <lib/core/CHIPError.h>
+#include <lib/core/ClusterEnums.h>
 #include <lib/support/CHIPMemString.h>
 #include <lib/support/CommonIterator.h>
 
@@ -33,7 +33,7 @@ namespace Credentials {
 class GroupDataProvider
 {
 public:
-    using SecurityPolicy                                  = app::Clusters::GroupKeyManagement::GroupKeySecurityPolicy;
+    using SecurityPolicy                                  = app::Clusters::GroupKeyManagement::GroupKeySecurityPolicyEnum;
     static constexpr KeysetId kIdentityProtectionKeySetId = 0;
 
     struct GroupInfo
@@ -72,7 +72,7 @@ public:
                 Platform::CopyString(name, groupName);
             }
         }
-        bool operator==(const GroupInfo & other)
+        bool operator==(const GroupInfo & other) const
         {
             return (this->group_id == other.group_id) && !strncmp(this->name, other.name, kGroupNameMax);
         }
@@ -113,7 +113,7 @@ public:
         GroupId group_id = kUndefinedGroupId;
         FabricIndex fabric_index;
         SecurityPolicy security_policy;
-        Crypto::SymmetricKeyContext * key = nullptr;
+        Crypto::SymmetricKeyContext * keyContext = nullptr;
     };
 
     // An EpochKey is a single key usable to determine an operational group key
@@ -151,7 +151,7 @@ public:
         // Number of keys present
         uint8_t num_keys_used = 0;
 
-        bool operator==(const KeySet & other)
+        bool operator==(const KeySet & other) const
         {
             VerifyOrReturnError(this->policy == other.policy && this->num_keys_used == other.num_keys_used, false);
             return !memcmp(this->epoch_keys, other.epoch_keys, this->num_keys_used * sizeof(EpochKey));
@@ -202,7 +202,7 @@ public:
     virtual ~GroupDataProvider() = default;
 
     // Not copyable
-    GroupDataProvider(const GroupDataProvider &) = delete;
+    GroupDataProvider(const GroupDataProvider &)             = delete;
     GroupDataProvider & operator=(const GroupDataProvider &) = delete;
 
     uint16_t GetMaxGroupsPerFabric() const { return mMaxGroupsPerFabric; }
@@ -249,10 +249,11 @@ public:
      *  Creates an iterator that may be used to obtain the list of (group, endpoint) pairs associated with the given fabric.
      *  In order to release the allocated memory, the Release() method must be called after the iteration is finished.
      *  Modifying the group table during the iteration is currently not supported, and may yield unexpected behaviour.
+     *  If you wish to iterate only the endpoints of a particular group id you can provide the optional `group_id` to do so.
      *  @retval An instance of EndpointIterator on success
      *  @retval nullptr if no iterator instances are available.
      */
-    virtual EndpointIterator * IterateEndpoints(FabricIndex fabric_index) = 0;
+    virtual EndpointIterator * IterateEndpoints(FabricIndex fabric_index, std::optional<GroupId> group_id = std::nullopt) = 0;
 
     //
     // Group-Key map

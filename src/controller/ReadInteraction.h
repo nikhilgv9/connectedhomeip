@@ -18,11 +18,14 @@
 
 #pragma once
 
+#include <app/AppConfig.h>
 #include <app/AttributePathParams.h>
 #include <app/InteractionModelEngine.h>
+#include <app/ReadClient.h>
 #include <app/ReadPrepareParams.h>
 #include <controller/TypedReadCallback.h>
 
+#if CHIP_CONFIG_ENABLE_READ_CLIENT
 namespace chip {
 namespace Controller {
 namespace detail {
@@ -328,3 +331,4 @@ CHIP_ERROR SubscribeEvent(
 
 } // namespace Controller
 } // namespace chip
+#endif // CHIP_CONFIG_ENABLE_READ_CLIENT

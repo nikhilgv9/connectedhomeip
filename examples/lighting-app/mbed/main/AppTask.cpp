@@ -20,6 +20,7 @@
 #include "LEDWidget.h"
 #include "LightingManager.h"
 
+#include <app/codegen-data-model-provider/Instance.h>
 #include <app/server/Dnssd.h>
 #include <app/server/OnboardingCodesUtil.h>
 #include <app/server/Server.h>
@@ -33,9 +34,8 @@
 #include "events/EventQueue.h"
 
 // ZAP -- ZCL Advanced Platform
-#include <app-common/zap-generated/attribute-id.h>
-#include <app-common/zap-generated/attribute-type.h>
-#include <app-common/zap-generated/cluster-id.h>
+#include <app-common/zap-generated/attributes/Accessors.h>
+#include <app-common/zap-generated/ids/Clusters.h>
 #include <app/util/attribute-storage.h>
 
 #ifdef CAPSENSE_ENABLED
@@ -117,6 +117,7 @@ int AppTask::Init()
     // Init ZCL Data Model and start server
     static chip::CommonCaseDeviceServerInitParams initParams;
     (void) initParams.InitializeStaticResourcesBeforeServerInit();
+    initParams.dataModelProvider = app::CodegenDataModelProviderInstance();
 
     error = Server::GetInstance().Init(initParams);
     if (error != CHIP_NO_ERROR)
@@ -463,20 +464,18 @@ void AppTask::UpdateClusterState()
     uint8_t onoff = LightingMgr().IsTurnedOn();
 
     // write the new on/off value
-    EmberAfStatus status =
-        emberAfWriteServerAttribute(1, ZCL_ON_OFF_CLUSTER_ID, ZCL_ON_OFF_ATTRIBUTE_ID, &onoff, ZCL_BOOLEAN_ATTRIBUTE_TYPE);
-    if (status != EMBER_ZCL_STATUS_SUCCESS)
+    Protocols::InteractionModel::Status status = app::Clusters::OnOff::Attributes::OnOff::Set(1, onoff);
+    if (status != Protocols::InteractionModel::Status::Success)
     {
-        ChipLogError(NotSpecified, "Updating on/off cluster failed: %x", status);
+        ChipLogError(NotSpecified, "Updating on/off cluster failed: %x", to_underlying(status));
     }
 
     uint8_t level = LightingMgr().GetLevel();
 
-    status = emberAfWriteServerAttribute(1, ZCL_LEVEL_CONTROL_CLUSTER_ID, ZCL_CURRENT_LEVEL_ATTRIBUTE_ID, &level,
-                                         ZCL_INT8U_ATTRIBUTE_TYPE);
+    status = app::Clusters::LevelControl::Attributes::CurrentLevel::Set(1, level);
 
-    if (status != EMBER_ZCL_STATUS_SUCCESS)
+    if (status != Protocols::InteractionModel::Status::Success)
     {
-        ChipLogError(NotSpecified, "Updating level cluster failed: %x", status);
+        ChipLogError(NotSpecified, "Updating level cluster failed: %x", to_underlying(status));
     }
 }

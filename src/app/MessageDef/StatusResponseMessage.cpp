@@ -52,7 +52,7 @@ CHIP_ERROR StatusResponseMessage::Parser::PrettyPrint() const
             }
 #endif // CHIP_DETAIL_LOGGING
             break;
-        case kInteractionModelRevisionTag:
+        case Revision::kInteractionModelRevisionTag:
             ReturnErrorOnFailure(MessageParser::CheckInteractionModelRevision(reader));
             break;
         default:
@@ -85,7 +85,7 @@ StatusResponseMessage::Builder & StatusResponseMessage::Builder::Status(const Pr
     // skip if error has already been set
     if (mError == CHIP_NO_ERROR)
     {
-        mError = mpWriter->Put(TLV::ContextTag(to_underlying(Tag::kStatus)), aStatus);
+        mError = mpWriter->Put(TLV::ContextTag(Tag::kStatus), aStatus);
     }
     if (mError == CHIP_NO_ERROR)
     {

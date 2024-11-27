@@ -19,17 +19,80 @@
 /**
  *    @file
  *          Platform-specific configuration overrides for the Chip Device Layer
- *          on EFR32 platforms using the Silicon Labs SDK.
+ *          on Silabs platforms using the Silicon Labs SDK.
  */
 
 #pragma once
+#include <cmsis_os2.h>
+#include <sl_cmsis_os2_common.h>
 
 // ==================== Platform Adaptations ====================
 
-#define CHIP_DEVICE_CONFIG_EFR32_NVM3_ERROR_MIN 0xB00000
-#define CHIP_DEVICE_CONFIG_EFR32_BLE_ERROR_MIN 0xC00000
+#define CHIP_DEVICE_CONFIG_SILABS_NVM3_ERROR_MIN 0xB00000
+#define CHIP_DEVICE_CONFIG_SILABS_BLE_ERROR_MIN 0xC00000
 
 #define CHIP_DEVICE_CONFIG_ENABLE_WIFI_AP 0
+
+/**
+ * CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING
+ *
+ * A string identifying the software version running on the device.
+ */
+#ifdef SL_MATTER_VERSION_STRING
+#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING SL_MATTER_VERSION_STRING
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION
+ *
+ * A monothonic number identifying the software version running on the device.
+ */
+#ifdef SL_MATTER_VERSION
+#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION SL_MATTER_VERSION
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_DEFAULT_DEVICE_HARDWARE_VERSION
+ *
+ * The hardware version number assigned to device or product by the device vendor.  This
+ * number is scoped to the device product id, and typically corresponds to a revision of the
+ * physical device, a change to its packaging, and/or a change to its marketing presentation.
+ * This value is generally *not* incremented for device software versions.
+ */
+#ifdef SL_HARDWARE_VERSION
+#define CHIP_DEVICE_CONFIG_DEFAULT_DEVICE_HARDWARE_VERSION SL_HARDWARE_VERSION
+#endif
+
+/**
+ *  Allow for some test/fall-back values to be used
+ * Production builds shall set to 0 or remove this option
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_TEST_SETUP_PARAMS
+#define CHIP_DEVICE_CONFIG_ENABLE_TEST_SETUP_PARAMS 1
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ROTATING_DEVICE_ID_UNIQUE_ID_LENGTH
+ *
+ * Unique ID length in bytes. The value should be 16-bytes or longer.
+ */
+#ifndef CHIP_DEVICE_CONFIG_ROTATING_DEVICE_ID_UNIQUE_ID_LENGTH
+#define CHIP_DEVICE_CONFIG_ROTATING_DEVICE_ID_UNIQUE_ID_LENGTH 32
+#endif
+
+#if CHIP_DEVICE_CONFIG_ENABLE_TEST_SETUP_PARAMS
+/**
+ *  @brief Fallback value for the basic information cluster's Vendor name attribute
+ *   if the actual vendor name is not provisioned in the device memory.
+ */
+#define CHIP_DEVICE_CONFIG_TEST_VENDOR_NAME "Silabs"
+
+/**
+ *  @brief Fallback value for the basic information cluster's product name attribute
+ *   if the actual vendor name is not provisioned in the device memory.
+ */
+#define CHIP_DEVICE_CONFIG_TEST_PRODUCT_NAME "SL_Sample"
+#endif // CHIP_DEVICE_CONFIG_ENABLE_TEST_SETUP_PARAMS
 
 #if defined(SL_WIFI)
 #define CHIP_DEVICE_CONFIG_ENABLE_WIFI_STATION 1
@@ -44,13 +107,20 @@
 #endif /* CHIP_ENABLE_OPENTHREAD */
 #endif /* defined(SL_WIFI) */
 
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_CHIPOBLE
 #define CHIP_DEVICE_CONFIG_ENABLE_CHIPOBLE 1
+#endif
 
 #if defined(SL_WIFI)
 
 #ifndef CHIP_DEVICE_CONFIG_ENABLE_IPV4
 #define CHIP_DEVICE_CONFIG_ENABLE_IPV4 0
 #endif /* CHIP_DEVICE_CONFIG_ENABLE_IPV4 */
+
+#if SL_ICD_ENABLED
+#define CHIP_DEVICE_CONFIG_ICD_SLOW_POLL_INTERVAL chip::System::Clock::Milliseconds32(300)
+#define CHIP_DEVICE_CONFIG_ICD_FAST_POLL_INTERVAL chip::System::Clock::Milliseconds32(10)
+#endif /* SL_ICD_ENABLED */
 
 #endif /* SL_WIFI */
 
@@ -61,24 +131,16 @@
 
 // ========== Platform-specific Configuration Overrides =========
 
-#ifndef CHIP_DEVICE_CONFIG_BLE_LL_TASK_PRIORITY
-#define CHIP_DEVICE_CONFIG_BLE_LL_TASK_PRIORITY (configTIMER_TASK_PRIORITY - 1)
-#endif // CHIP_DEVICE_CONFIG_BLE_LL_TASK_PRIORITY
-
-#ifndef CHIP_DEVICE_CONFIG_BLE_STACK_TASK_PRIORITY
-#define CHIP_DEVICE_CONFIG_BLE_STACK_TASK_PRIORITY (CHIP_DEVICE_CONFIG_BLE_LL_TASK_PRIORITY - 1)
-#endif // CHIP_DEVICE_CONFIG_BLE_STACK_TASK_PRIORITY
-
-#ifndef CHIP_DEVICE_CONFIG_BLE_APP_TASK_PRIORITY
-#define CHIP_DEVICE_CONFIG_BLE_APP_TASK_PRIORITY (CHIP_DEVICE_CONFIG_BLE_STACK_TASK_PRIORITY - 1)
-#endif // CHIP_DEVICE_CONFIG_BLE_STACK_TASK_PRIORITY
-
-#ifndef CHIP_DEVICE_CONFIG_BLE_APP_TASK_STACK_SIZE
-#define CHIP_DEVICE_CONFIG_BLE_APP_TASK_STACK_SIZE 1536
-#endif // CHIP_DEVICE_CONFIG_BLE_APP_TASK_STACK_SIZE
+#ifndef CHIP_DEVICE_CONFIG_CHIP_TASK_PRIORITY
+#define CHIP_DEVICE_CONFIG_CHIP_TASK_PRIORITY osPriorityHigh
+#endif
 
 #ifndef CHIP_DEVICE_CONFIG_CHIP_TASK_STACK_SIZE
+#if SLI_SI91X_MCU_INTERFACE
+#define CHIP_DEVICE_CONFIG_CHIP_TASK_STACK_SIZE (7 * 1024)
+#else
 #define CHIP_DEVICE_CONFIG_CHIP_TASK_STACK_SIZE (6 * 1024)
+#endif
 #endif // CHIP_DEVICE_CONFIG_CHIP_TASK_STACK_SIZE
 
 #ifndef CHIP_DEVICE_CONFIG_THREAD_TASK_STACK_SIZE
@@ -98,3 +160,19 @@
 #endif // CHIP_DEVICE_CONFIG_BLE_APP_TASK_NAME
 
 #define CHIP_DEVICE_CONFIG_MAX_EVENT_QUEUE_SIZE 25
+
+#define CHIP_DEVICE_CONFIG_EXT_ADVERTISING SL_MATTER_BLE_EXTENDED_ADV
+
+/*
+    ICD Configuration Defines
+*/
+
+#if SL_ICD_ENABLED
+#ifndef CHIP_DEVICE_CONFIG_ICD_SLOW_POLL_INTERVAL
+#define CHIP_DEVICE_CONFIG_ICD_SLOW_POLL_INTERVAL chip::System::Clock::Milliseconds32(SL_OT_IDLE_INTERVAL)
+#endif // CHIP_DEVICE_CONFIG_ICD_SLOW_POLL_INTERVAL
+
+#ifndef CHIP_DEVICE_CONFIG_ICD_FAST_POLL_INTERVAL
+#define CHIP_DEVICE_CONFIG_ICD_FAST_POLL_INTERVAL chip::System::Clock::Milliseconds32(SL_OT_ACTIVE_INTERVAL)
+#endif // CHIP_DEVICE_CONFIG_ICD_FAST_POLL_INTERVAL
+#endif // SL_ICD_ENABLED

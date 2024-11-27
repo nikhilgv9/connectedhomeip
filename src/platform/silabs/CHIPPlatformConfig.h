@@ -19,12 +19,19 @@
 /**
  *    @file
  *          Platform-specific configuration overrides for CHIP on
- *          Silcon Labs EFR32 platforms.
+ *          Silcon Labs Silabs platforms.
  */
 
 #pragma once
 
+#include <app/icd/server/ICDServerConfig.h>
 #include <stdint.h>
+
+#if (SL_MATTER_GN_BUILD == 0)
+#if defined(CHIP_CONFIG_ENABLE_ICD_SERVER) && (CHIP_CONFIG_ENABLE_ICD_SERVER == 1)
+#include "sl_matter_icd_config.h"
+#endif // defined(CHIP_CONFIG_ENABLE_ICD_SERVER) && (CHIP_CONFIG_ENABLE_ICD_SERVER == 1)
+#endif // SL_MATTER_GN_BUILD
 
 // ==================== General Platform Adaptations ====================
 
@@ -34,21 +41,30 @@
 #define CHIP_CONFIG_PERSISTED_STORAGE_ENC_MSG_CNTR_ID 1
 #define CHIP_CONFIG_PERSISTED_STORAGE_MAX_KEY_LENGTH 2
 
-#define CHIP_CONFIG_LIFETIIME_PERSISTED_COUNTER_KEY EFR32Config::kConfigKey_LifeTimeCounter
+#define CHIP_CONFIG_LIFETIIME_PERSISTED_COUNTER_KEY SilabsConfig::kConfigKey_LifeTimeCounter
 
 // ==================== Security Adaptations ====================
 
-// FIXME: EFR32 set to MBED-TLS (But this is third-party repo in CHIP, not SDK)
+// FIXME: Silabs set to MBED-TLS (But this is third-party repo in CHIP, not SDK)
 
-// FIXME: EFR32 currently set to CHIP (Does this use Entropy.cpp ?)
+// FIXME: Silabs currently set to CHIP (Does this use Entropy.cpp ?)
 
 #if CHIP_HAVE_CONFIG_H
 #include <crypto/CryptoBuildConfig.h>
 #endif
-#if !defined(CHIP_CONFIG_SHA256_CONTEXT_SIZE) && (CHIP_CRYPTO_PLATFORM == 1)
+
+#if (CHIP_CRYPTO_PLATFORM == 1) && !defined(SL_MBEDTLS_USE_TINYCRYPT)
 #include "psa/crypto.h"
+
+#if !defined(CHIP_CONFIG_SHA256_CONTEXT_SIZE)
 #define CHIP_CONFIG_SHA256_CONTEXT_SIZE (sizeof(psa_hash_operation_t))
 #endif
+
+#if !defined(CHIP_CONFIG_SHA256_CONTEXT_ALIGN)
+#define CHIP_CONFIG_SHA256_CONTEXT_ALIGN psa_hash_operation_t
+#endif
+
+#endif // (CHIP_CRYPTO_PLATFORM == 1) && !defined(SL_MBEDTLS_USE_TINYCRYPT)
 
 // ==================== General Configuration Overrides ====================
 
@@ -84,11 +100,44 @@
 #define CHIP_CONFIG_MAX_FABRICS 5 // 4 fabrics + 1 for rotation slack
 #endif
 
-// ==================== FreeRTOS Configuration Overrides ====================
-#ifndef CHIP_CONFIG_FREERTOS_USE_STATIC_TASK
-#define CHIP_CONFIG_FREERTOS_USE_STATIC_TASK 1
+#if defined(CHIP_CONFIG_ENABLE_ICD_SERVER) && CHIP_CONFIG_ENABLE_ICD_SERVER
+
+#ifndef CHIP_CONFIG_ICD_IDLE_MODE_DURATION_SEC
+#define CHIP_CONFIG_ICD_IDLE_MODE_DURATION_SEC SL_IDLE_MODE_DURATION_S
+#endif // CHIP_CONFIG_ICD_IDLE_MODE_DURATION_SEC
+
+#ifndef CHIP_CONFIG_ICD_ACTIVE_MODE_DURATION_MS
+#define CHIP_CONFIG_ICD_ACTIVE_MODE_DURATION_MS SL_ACTIVE_MODE_DURATION_MS
+#endif // CHIP_CONFIG_ICD_ACTIVE_MODE_DURATION_MS
+
+#ifndef CHIP_CONFIG_ICD_ACTIVE_MODE_THRESHOLD_MS
+#define CHIP_CONFIG_ICD_ACTIVE_MODE_THRESHOLD_MS SL_ACTIVE_MODE_THRESHOLD
+#endif // CHIP_CONFIG_ICD_ACTIVE_MODE_THRESHOLD_MS
+
+#ifndef CHIP_CONFIG_ICD_CLIENTS_SUPPORTED_PER_FABRIC
+#define CHIP_CONFIG_ICD_CLIENTS_SUPPORTED_PER_FABRIC SL_ICD_SUPPORTED_CLIENTS_PER_FABRIC
+#endif // CHIP_CONFIG_ICD_CLIENTS_SUPPORTED_PER_FABRIC
+
+#endif // defined(CHIP_CONFIG_ENABLE_ICD_SERVER) && CHIP_CONFIG_ENABLE_ICD_SERVER
+
+/**
+ * @brief CHIP_SHELL_MAX_LINE_SIZE
+ *
+ * @brief Platform maximum line for the Matter Shell
+ */
+#ifndef CHIP_SHELL_MAX_LINE_SIZE
+#define CHIP_SHELL_MAX_LINE_SIZE 256
+#endif // CHIP_SHELL_MAX_LINE_SIZE
+
+// ==================== CMSISOS Configuration Overrides ====================
+#ifndef CHIP_CONFIG_CMSISOS_USE_STATIC_TASK
+#define CHIP_CONFIG_CMSISOS_USE_STATIC_TASK 1
 #endif
 
-#ifndef CHIP_CONFIG_FREERTOS_USE_STATIC_QUEUE
-#define CHIP_CONFIG_FREERTOS_USE_STATIC_QUEUE 1
+#ifndef CHIP_CONFIG_CMSISOS_USE_STATIC_QUEUE
+#define CHIP_CONFIG_CMSISOS_USE_STATIC_QUEUE 1
 #endif
+
+#ifndef CHIP_SHELL_MAX_TOKENS
+#define CHIP_SHELL_MAX_TOKENS 40
+#endif // CHIP_SHELL_MAX_TOKENS

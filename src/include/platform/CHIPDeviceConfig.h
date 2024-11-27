@@ -79,7 +79,7 @@
  * The priority of the chip task.
  */
 #ifndef CHIP_DEVICE_CONFIG_CHIP_TASK_PRIORITY
-#define CHIP_DEVICE_CONFIG_CHIP_TASK_PRIORITY 1
+#define CHIP_DEVICE_CONFIG_CHIP_TASK_PRIORITY 2
 #endif
 
 /**
@@ -92,32 +92,91 @@
 #endif
 
 /**
- * CHIP_DEVICE_CONFIG_ENABLE_SED
+ * CHIP_DEVICE_CONFIG_ENABLE_BG_EVENT_PROCESSING
  *
- * Enable support for sleepy end device behavior.
+ * Enable support for background event processing.
  */
-#ifndef CHIP_DEVICE_CONFIG_ENABLE_SED
-#define CHIP_DEVICE_CONFIG_ENABLE_SED 0
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_BG_EVENT_PROCESSING
+#define CHIP_DEVICE_CONFIG_ENABLE_BG_EVENT_PROCESSING 0
 #endif
 
 /**
- * CHIP_DEVICE_CONFIG_SED_IDLE_INTERVAL
+ * CHIP_DEVICE_CONFIG_BG_TASK_NAME
+ *
+ * The name of the background task.
+ */
+#ifndef CHIP_DEVICE_CONFIG_BG_TASK_NAME
+#define CHIP_DEVICE_CONFIG_BG_TASK_NAME "BG"
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_BG_TASK_STACK_SIZE
+ *
+ * The size (in bytes) of the background task stack.
+ */
+#ifndef CHIP_DEVICE_CONFIG_BG_TASK_STACK_SIZE
+#define CHIP_DEVICE_CONFIG_BG_TASK_STACK_SIZE (6 * 1024)
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_BG_TASK_PRIORITY
+ *
+ * The priority of the background task.
+ */
+#ifndef CHIP_DEVICE_CONFIG_BG_TASK_PRIORITY
+#define CHIP_DEVICE_CONFIG_BG_TASK_PRIORITY 1
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_BG_MAX_EVENT_QUEUE_SIZE
+ *
+ * The maximum number of events that can be held in the chip background event queue.
+ */
+#ifndef CHIP_DEVICE_CONFIG_BG_MAX_EVENT_QUEUE_SIZE
+#define CHIP_DEVICE_CONFIG_BG_MAX_EVENT_QUEUE_SIZE 1
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ICD_SLOW_POLL_INTERVAL
  *
  * The default amount of time in milliseconds that the sleepy end device will use as an idle interval.
  * This interval is used by the device to periodically wake up and poll the data in the idle mode.
  */
-#ifndef CHIP_DEVICE_CONFIG_SED_IDLE_INTERVAL
-#define CHIP_DEVICE_CONFIG_SED_IDLE_INTERVAL 5000_ms32
+#ifndef CHIP_DEVICE_CONFIG_ICD_SLOW_POLL_INTERVAL
+#define CHIP_DEVICE_CONFIG_ICD_SLOW_POLL_INTERVAL System::Clock::Milliseconds32(5000)
 #endif
 
 /**
- * CHIP_DEVICE_CONFIG_SED_ACTIVE_INTERVAL
+ * CHIP_DEVICE_CONFIG_ICD_SIT_SLOW_POLL_LIMIT
+ *
+ * The maximum value of time in milliseconds that the sleepy end device can use as an idle interval in the SIT mode.
+ * The Matter spec does not allow this value to exceed 15s (spec 9.16.1.5).
+ * For the SIT device, the usability of this value is arguable, as slow poll interval can be configured using
+ * CHIP_DEVICE_CONFIG_ICD_SLOW_POLL_INTERVAL. This value can be used for the LIT device, to limit the slow poll interval used while
+ * temporarily working in the SIT mode.
+ */
+#ifndef CHIP_DEVICE_CONFIG_ICD_SIT_SLOW_POLL_LIMIT
+#define CHIP_DEVICE_CONFIG_ICD_SIT_SLOW_POLL_LIMIT System::Clock::Milliseconds32(15000)
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ICD_FAST_POLL_INTERVAL
  *
  * The default amount of time in milliseconds that the sleepy end device will use as an active interval.
  * This interval is used by the device to periodically wake up and poll the data in the active mode.
  */
-#ifndef CHIP_DEVICE_CONFIG_SED_ACTIVE_INTERVAL
-#define CHIP_DEVICE_CONFIG_SED_ACTIVE_INTERVAL 200_ms32
+#ifndef CHIP_DEVICE_CONFIG_ICD_FAST_POLL_INTERVAL
+#define CHIP_DEVICE_CONFIG_ICD_FAST_POLL_INTERVAL System::Clock::Milliseconds32(200)
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_SED_ACTIVE_THRESHOLD
+ *
+ *  Minimum amount the node SHOULD stay awake after network activity.
+ * Spec section 2.12.5
+ */
+#ifndef CHIP_DEVICE_CONFIG_SED_ACTIVE_THRESHOLD
+#define CHIP_DEVICE_CONFIG_SED_ACTIVE_THRESHOLD System::Clock::Milliseconds32(4000)
 #endif
 
 // -------------------- Device Identification Configuration --------------------
@@ -169,7 +228,7 @@
 #endif
 
 /**
- * CHIP_DEVICE_CONFIG_DEVICE_HARDWARE_VERSION_STRING
+ * CHIP_DEVICE_CONFIG_DEFAULT_DEVICE_HARDWARE_VERSION_STRING
  *
  * Human readable string identifying version of the product assigned by the device vendor.
  */
@@ -200,7 +259,7 @@
  * A string identifying the software version running on the device.
  */
 #ifndef CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING
-#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING "prerelease"
+#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING "1.0"
 #endif
 
 /**
@@ -209,7 +268,7 @@
  * A monothonic number identifying the software version running on the device.
  */
 #ifndef CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION
-#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION 0
+#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION 1
 #endif
 
 /**
@@ -257,6 +316,19 @@
 #endif // CHIP_DEVICE_CONFIG_SUPPORTS_CONCURRENT_CONNECTION
 
 /**
+ * The device shall check every WIFI_START_CHECK_TIME_USEC whether Wi-Fi management
+ * has been fully initialized. If after WIFI_START_CHECK_ATTEMPTS Wi-Fi management
+ * still hasn't been initialized, the device configuration is reset, and device
+ * needs to be paired again.
+ */
+#ifndef WIFI_START_CHECK_TIME_USEC
+#define WIFI_START_CHECK_TIME_USEC 100000 // 100ms
+#endif
+#ifndef WIFI_START_CHECK_ATTEMPTS
+#define WIFI_START_CHECK_ATTEMPTS 5
+#endif
+
+/**
  * CHIP_DEVICE_CONFIG_USER_SELECTED_MODE_TIMEOUT_SEC
  *
  * The default amount of time (in whole seconds) that the device will remain in "user selected"
@@ -298,6 +370,15 @@
  */
 #ifndef CHIP_DEVICE_CONFIG_ENABLE_WIFI_STATION
 #define CHIP_DEVICE_CONFIG_ENABLE_WIFI_STATION 1
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_WIFI_PDC
+ *
+ * Enable support for WiFi Per-Device Credentials
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_WIFI_PDC
+#define CHIP_DEVICE_CONFIG_ENABLE_WIFI_PDC 0
 #endif
 
 /**
@@ -355,6 +436,15 @@
  */
 #ifndef CHIP_DEVICE_CONFIG_WIFI_STATION_IF_NAME
 #define CHIP_DEVICE_CONFIG_WIFI_STATION_IF_NAME "wlan0"
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_WIFIPAF
+ *
+ * Enable support for commissioning using Wi-Fi Public Action Frame as the transport.
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_WIFIPAF
+#define CHIP_DEVICE_CONFIG_ENABLE_WIFIPAF 0
 #endif
 
 // -------------------- WiFi AP Configuration --------------------
@@ -549,6 +639,59 @@
 #define CHIP_DEVICE_CONFIG_BLE_ADVERTISING_INTERVAL_CHANGE_TIME 30000
 #endif
 
+/**
+ * CHIP_DEVICE_CONFIG_EXT_ADVERTISING
+ *
+ * Optional configuration to enable Extended Announcement Duration up to 48h.
+ * Should be used together with extending CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS past 15 minutes.
+ * Disabled by default.
+ */
+
+#ifndef CHIP_DEVICE_CONFIG_EXT_ADVERTISING
+#define CHIP_DEVICE_CONFIG_EXT_ADVERTISING 0
+#endif
+
+#if CHIP_DEVICE_CONFIG_EXT_ADVERTISING
+
+/**
+ * CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_CHANGE_TIME_MS
+ *
+ * The amount of time in miliseconds after which BLE advertisement should be switched from the slow
+ * advertising to the extended advertising, counting from the moment of advertisement commencement.
+ *
+ *  Defaults to 900000 ms.
+ */
+#ifndef CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_CHANGE_TIME_MS
+#define CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_CHANGE_TIME_MS (15 * 60 * 1000)
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_MIN
+ *
+ * The minimum interval (in units of 0.625ms) at which the device will send BLE advertisements while
+ * in the extended advertising mode. The minimum interval shall not be smaller than the default value.
+ *
+ * Defaults to 2056 (1285 ms).
+ */
+#define CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_MIN 2056
+
+/**
+ * CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_MAX
+ *
+ * The maximum interval (in units of 0.625ms) at which the device will send BLE advertisements while
+ * in the extended advertising mode. The maximum interval should be greater.
+ *
+ * Defaults to 2056 (1285 ms).
+ */
+#ifndef CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_MAX
+#define CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_MAX 2056
+#endif
+
+static_assert(CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_MIN <= CHIP_DEVICE_CONFIG_BLE_EXT_ADVERTISING_INTERVAL_MAX,
+              "Max Extended Advertising Interval cannot be larger to the Min Extended Advertising Interval");
+
+#endif
+
 // -------------------- Service Provisioning Configuration --------------------
 
 /**
@@ -584,6 +727,236 @@
 #define CHIP_DEVICE_CONFIG_SERVICE_PROVISIONING_REQUEST_TIMEOUT 10000
 #endif
 
+// -------------------- Device DNS-SD Configuration --------------------
+
+/**
+ * CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS
+ *
+ * Time in seconds that a factory new device will advertise commissionable node discovery.
+ */
+#ifndef CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS
+#if CHIP_DEVICE_CONFIG_EXT_ADVERTISING
+/**
+ * By default, the extended announcement, when enabled, starts its extended advertising 15 mins
+ * after the standard slow advertisement. Time at which the default discovery time would close the
+ * commissioning window and stop the BLE.
+ * Therefore, when CHIP_DEVICE_CONFIG_EXT_ADVERTISING is enabled bump the default Discovery timeout
+ * to the maximum allowed by the spec. 48h.
+ */
+#define CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS (60 * 60 * 48)
+#else
+#define CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS (15 * 60)
+#endif // CHIP_DEVICE_CONFIG_EXT_ADVERTISING
+#endif // CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS
+
+/**
+ * CHIP_DEVICE_CONFIG_MAX_DISCOVERED_NODES
+ *
+ * Maximum number of CHIP Commissioners or Commissionable Nodes that can be discovered
+ */
+#ifndef CHIP_DEVICE_CONFIG_MAX_DISCOVERED_NODES
+#define CHIP_DEVICE_CONFIG_MAX_DISCOVERED_NODES 10
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY
+ *
+ * Enable or disable whether this device advertises as a commissioner.
+ *
+ * Depends upon CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE set to 1
+ *
+ * For Video Players, this value will be 1
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY
+#define CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY 0
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_UDC_MAX_TARGET_APPS
+ *
+ * The number of target apps that a client can include in a UDC message.
+ *
+ * Depends upon CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY set to 1
+ *
+ * For Video Players, this value should be set to 10
+ */
+#ifndef CHIP_DEVICE_CONFIG_UDC_MAX_TARGET_APPS
+#define CHIP_DEVICE_CONFIG_UDC_MAX_TARGET_APPS 3
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE
+ *
+ * Enable including commissioner code (CHIPDeviceController.cpp) in the commissionee (Server.cpp) code.
+ *
+ * For Video Players, this value will be 1
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE
+#define CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE 0
+#endif
+
+/**
+ * CHIP_CONFIG_UNSAFE_SUBSCRIPTION_EXCHANGE_MANAGER_USE
+ *
+ * See issue 23625.
+ *
+ * Needs to be 1 when the following is 1:
+ *  CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE
+ */
+#ifndef CHIP_CONFIG_UNSAFE_SUBSCRIPTION_EXCHANGE_MANAGER_USE
+#define CHIP_CONFIG_UNSAFE_SUBSCRIPTION_EXCHANGE_MANAGER_USE 0
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY_CLIENT
+ *
+ * Enable or disable whether this device will attempt to
+ * discover commissioners and send Uder Directed Commissioning
+ * messages to them.
+ *
+ * For Video Player Clients, this value will be 1
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY_CLIENT
+#define CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY_CLIENT 0
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_EXTENDED_DISCOVERY
+ *
+ * Enable or disable whether this device advertises when not in commissioning mode.
+ *
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_EXTENDED_DISCOVERY
+#define CHIP_DEVICE_CONFIG_ENABLE_EXTENDED_DISCOVERY 0
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_EXTENDED_DISCOVERY_TIMEOUT_SECS
+ *
+ * Default time in seconds that a device will advertise commissionable node discovery
+ * after commissioning mode ends. This value can be overridden by the user.
+ *
+ * Only valid when CHIP_DEVICE_CONFIG_ENABLE_EXTENDED_DISCOVERY==1
+ */
+#define CHIP_DEVICE_CONFIG_DISCOVERY_DISABLED 0
+#define CHIP_DEVICE_CONFIG_DISCOVERY_NO_TIMEOUT -1
+#ifndef CHIP_DEVICE_CONFIG_EXTENDED_DISCOVERY_TIMEOUT_SECS
+#define CHIP_DEVICE_CONFIG_EXTENDED_DISCOVERY_TIMEOUT_SECS (15 * 60)
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_TYPE
+ *
+ * Enable or disable including device type in commissionable node discovery.
+ *
+ * For Video Players, this value will often be 1
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_TYPE
+#define CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_TYPE 0
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_DEVICE_TYPE
+ *
+ * Type of device using the CHIP Device Type Identifier.
+ *
+ * Examples:
+ * 0xFFFF = 65535 = Invalid Device Type
+ * 0x0051 = 81 = Smart Plug
+ * 0x0022 = 34 = Speaker
+ * 0x0023 = 35 = Video Player
+ *
+ */
+#ifndef CHIP_DEVICE_CONFIG_DEVICE_TYPE
+#define CHIP_DEVICE_CONFIG_DEVICE_TYPE 65535 // 65535 = Invalid Device Type
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_NAME
+ *
+ * Enable or disable including device name in commissionable node discovery.
+ *
+ * For Video Players, this value will often be 1
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_NAME
+#define CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_NAME 0
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_DEVICE_NAME
+ *
+ * Name of device.
+ */
+#ifndef CHIP_DEVICE_CONFIG_DEVICE_NAME
+#define CHIP_DEVICE_CONFIG_DEVICE_NAME "Test Kitchen"
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_PAIRING_INITIAL_HINT
+ *
+ * Pairing Hint, bitmap value of methods to put device into pairing mode
+ * when it has not yet been commissioned.
+ *
+ * Bits:
+ * 0 - Power Cycle
+ * 5 - See Device Manual
+ */
+#ifndef CHIP_DEVICE_CONFIG_PAIRING_INITIAL_HINT
+#define CHIP_DEVICE_CONFIG_PAIRING_INITIAL_HINT                                                                                    \
+    (1 << CHIP_COMMISSIONING_HINT_INDEX_POWER_CYCLE | 1 << CHIP_COMMISSIONING_HINT_INDEX_SEE_MANUAL)
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_PAIRING_INITIAL_INSTRUCTION
+ *
+ * Pairing Instruction, when device has not yet been commissioned
+ *
+ * Meaning is depedent upon pairing hint value.
+ */
+#ifndef CHIP_DEVICE_CONFIG_PAIRING_INITIAL_INSTRUCTION
+#define CHIP_DEVICE_CONFIG_PAIRING_INITIAL_INSTRUCTION ""
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_HINT
+ *
+ * Pairing Hint, bitmap value of methods to put device into pairing mode
+ * when it has already been commissioned.
+ *
+ * Bits:
+ * 2 - Visit Administrator UX (always true for secondary)
+ * 5 - See Device Manual
+ */
+#ifndef CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_HINT
+#define CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_HINT                                                                                  \
+    (1 << CHIP_COMMISSIONING_HINT_INDEX_SEE_ADMINISTRATOR_UX | 1 << CHIP_COMMISSIONING_HINT_INDEX_SEE_MANUAL)
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_INSTRUCTION
+ *
+ * Pairing Instruction, when device has not yet been commissioned
+ *
+ * Meaning is depedent upon pairing hint value.
+ */
+#ifndef CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_INSTRUCTION
+#define CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_INSTRUCTION ""
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_PASSCODE
+ *
+ * Enable or disable commissioner passcode feature.
+ * With this feature enabled, the commissioner can generate a commissioning passcode
+ * and display it to the user so that the user can enter it into a commissionable
+ * node, such as a phone app, during user directed commissioning.
+ *
+ * For Video Players, this value will often be 1
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_PASSCODE
+#define CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_PASSCODE 0
+#endif
+
 // -------------------- Thread Configuration --------------------
 
 /**
@@ -615,6 +988,27 @@
 #endif
 
 /**
+ * CHIP_DEVICE_CONFIG_THREAD_BORDER_ROUTER
+ *
+ * Enable Thread Border Router service.
+ * Users should ensure OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE is set accordingly within their thread stack
+ *
+ */
+#ifndef CHIP_DEVICE_CONFIG_THREAD_BORDER_ROUTER
+#define CHIP_DEVICE_CONFIG_THREAD_BORDER_ROUTER 0
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_USES_OTBR_POSIX_DBUS_STACK
+ *
+ * Indicate if the matter device thread stack is implemented using the ot-br-posix dbus API
+ * Rather than the standard openthread stack api
+ *
+ */
+#ifndef CHIP_DEVICE_CONFIG_USES_OTBR_POSIX_DBUS_STACK
+#define CHIP_DEVICE_CONFIG_USES_OTBR_POSIX_DBUS_STACK 0
+#endif
+/**
  * CHIP_DEVICE_CONFIG_THREAD_TASK_NAME
  *
  * The name of the Thread task.
@@ -638,7 +1032,7 @@
  * The priority of the OpenThread task.
  */
 #ifndef CHIP_DEVICE_CONFIG_THREAD_TASK_PRIORITY
-#define CHIP_DEVICE_CONFIG_THREAD_TASK_PRIORITY 2
+#define CHIP_DEVICE_CONFIG_THREAD_TASK_PRIORITY 3
 #endif
 
 /**
@@ -727,6 +1121,15 @@
  */
 #ifndef CHIP_DEVICE_CONFIG_ENABLE_THREAD_DNS_CLIENT
 #define CHIP_DEVICE_CONFIG_ENABLE_THREAD_DNS_CLIENT 0
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_THREAD_AUTOSTART
+ *
+ * Enable starting provisioned Thread network automatically after device power-up.
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_THREAD_AUTOSTART
+#define CHIP_DEVICE_CONFIG_ENABLE_THREAD_AUTOSTART 1
 #endif
 
 // -------------------- Network Telemetry Configuration --------------------
@@ -897,8 +1300,12 @@
  * @def CHIP_DEVICE_CONFIG_EVENT_LOGGING_CRIT_BUFFER_SIZE
  *
  * @brief
- *   A size, in bytes, of the individual critical event logging buffer.
- *   Note: the critical event buffer must exist.
+ *   A size, in bytes, of the buffer reserved for storing CRITICAL events and no
+ *   other events.  CRITICAL events will never be evicted until this buffer is
+ *   full, so its size and the sizes of events determine how many of the last N
+ *   CRITICAL events are guaranteed to be available.
+ *
+ *   Note: this number must be nonzero.
  */
 #ifndef CHIP_DEVICE_CONFIG_EVENT_LOGGING_CRIT_BUFFER_SIZE
 #define CHIP_DEVICE_CONFIG_EVENT_LOGGING_CRIT_BUFFER_SIZE (1024)
@@ -912,9 +1319,13 @@
  * @def CHIP_DEVICE_CONFIG_EVENT_LOGGING_INFO_BUFFER_SIZE
  *
  * @brief
- *   A size, in bytes, of the individual info event logging buffer.
- *   Note: set to 0 to disable info event buffer and all support
- *   for the info level events.
+ *   A size, in bytes, of the buffer reserved for storing events at INFO
+ *   priority and higher.  INFO-priority events will not be evicted until this
+ *   buffer is full (with INFO and CRITICAL events in it) and the oldest event
+ *   in the buffer is an INFO-priority event (which cannot be evicted into the
+ *   CRITICAL event buffer).
+ *
+ *   Note: set to 0 to treat INFO events as effectively equivalent to DEBUG events.
  */
 #ifndef CHIP_DEVICE_CONFIG_EVENT_LOGGING_INFO_BUFFER_SIZE
 #define CHIP_DEVICE_CONFIG_EVENT_LOGGING_INFO_BUFFER_SIZE (512)
@@ -924,9 +1335,14 @@
  * @def CHIP_DEVICE_CONFIG_EVENT_LOGGING_DEBUG_BUFFER_SIZE
  *
  * @brief
- *   A size, in bytes, of the individual debug event logging buffer.
- *   Note: set to 0 to disable debug event buffer and all support
- *   for the debug level events.
+ *   A size, in bytes, of the buffer used for storing newly generated events,
+ *   and the only buffer in which DEBUG-priority events are allowed.
+ *   DEBUG-priority events will start getting evicted when this buffer is full
+ *   (with DEBUG, INFO, and CRITICAL events in it) and the oldest event in the
+ *   buffer is a DEBUG-priority event, which cannot be evicted into the INFO
+ *   event buffer.
+ *
+ *   Note: set to 0 to disable storing DEBUG events.
  */
 #ifndef CHIP_DEVICE_CONFIG_EVENT_LOGGING_DEBUG_BUFFER_SIZE
 #define CHIP_DEVICE_CONFIG_EVENT_LOGGING_DEBUG_BUFFER_SIZE (512)
@@ -940,6 +1356,16 @@
  */
 #ifndef CHIP_DEVICE_CONFIG_EVENT_ID_COUNTER_EPOCH
 #define CHIP_DEVICE_CONFIG_EVENT_ID_COUNTER_EPOCH (0x10000)
+#endif
+
+/**
+ * @def CHIP_DEVICE_CONFIG_EVENT_LOGGING_UTC_TIMESTAMPS
+ *
+ * @brief
+ *   By default, don't record UTC timestamps.
+ */
+#ifndef CHIP_DEVICE_CONFIG_EVENT_LOGGING_UTC_TIMESTAMPS
+#define CHIP_DEVICE_CONFIG_EVENT_LOGGING_UTC_TIMESTAMPS 0
 #endif
 
 // -------------------- Software Update Manager Configuration --------------------
@@ -1080,198 +1506,6 @@
 #define CHIP_DEVICE_CONFIG_FIRMWARE_BUILD_TIME __TIME__
 #endif
 
-// -------------------- Device DNS-SD Configuration --------------------
-
-/**
- * CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS
- *
- * Time in seconds that a factory new device will advertise commissionable node discovery.
- */
-#ifndef CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS
-#define CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS (15 * 60)
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_MAX_DISCOVERED_NODES
- *
- * Maximum number of CHIP Commissioners or Commissionable Nodes that can be discovered
- */
-#ifndef CHIP_DEVICE_CONFIG_MAX_DISCOVERED_NODES
-#define CHIP_DEVICE_CONFIG_MAX_DISCOVERED_NODES 10
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY
- *
- * Enable or disable whether this device advertises as a commissioner.
- *
- * Depends upon CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE set to 1
- *
- * For Video Players, this value will be 1
- */
-#ifndef CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY
-#define CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY 0
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE
- *
- * Enable including commissioner code (CHIPDeviceController.cpp) in the commissionee (Server.cpp) code.
- *
- * For Video Players, this value will be 1
- */
-#ifndef CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE
-#define CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE 0
-#endif
-
-/**
- * CHIP_CONFIG_UNSAFE_SUBSCRIPTION_EXCHANGE_MANAGER_USE
- *
- * See issue 23625.
- *
- * Needs to be 1 when the following is 1:
- *  CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE
- */
-#ifndef CHIP_CONFIG_UNSAFE_SUBSCRIPTION_EXCHANGE_MANAGER_USE
-#define CHIP_CONFIG_UNSAFE_SUBSCRIPTION_EXCHANGE_MANAGER_USE 0
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY_CLIENT
- *
- * Enable or disable whether this device will attempt to
- * discover commissioners and send Uder Directed Commissioning
- * messages to them.
- *
- * For Video Player Clients, this value will be 1
- */
-#ifndef CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY_CLIENT
-#define CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONER_DISCOVERY_CLIENT 0
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_ENABLE_EXTENDED_DISCOVERY
- *
- * Enable or disable whether this device advertises when not in commissioning mode.
- *
- */
-#ifndef CHIP_DEVICE_CONFIG_ENABLE_EXTENDED_DISCOVERY
-#define CHIP_DEVICE_CONFIG_ENABLE_EXTENDED_DISCOVERY 0
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_EXTENDED_DISCOVERY_TIMEOUT_SECS
- *
- * Default time in seconds that a device will advertise commissionable node discovery
- * after commissioning mode ends. This value can be overridden by the user.
- *
- * Only valid when CHIP_DEVICE_CONFIG_ENABLE_EXTENDED_DISCOVERY==1
- */
-#define CHIP_DEVICE_CONFIG_DISCOVERY_DISABLED 0
-#define CHIP_DEVICE_CONFIG_DISCOVERY_NO_TIMEOUT -1
-#ifndef CHIP_DEVICE_CONFIG_EXTENDED_DISCOVERY_TIMEOUT_SECS
-#define CHIP_DEVICE_CONFIG_EXTENDED_DISCOVERY_TIMEOUT_SECS (15 * 60)
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_TYPE
- *
- * Enable or disable including device type in commissionable node discovery.
- *
- * For Video Players, this value will often be 1
- */
-#ifndef CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_TYPE
-#define CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_TYPE 0
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_DEVICE_TYPE
- *
- * Type of device using the CHIP Device Type Identifier.
- *
- * Examples:
- * 0xFFFF = 65535 = Invalid Device Type
- * 0x0051 = 81 = Smart Plug
- * 0x0022 = 34 = Speaker
- * 0x0023 = 35 = Video Player
- *
- */
-#ifndef CHIP_DEVICE_CONFIG_DEVICE_TYPE
-#define CHIP_DEVICE_CONFIG_DEVICE_TYPE 65535 // 65535 = Invalid Device Type
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_NAME
- *
- * Enable or disable including device name in commissionable node discovery.
- *
- * For Video Players, this value will often be 1
- */
-#ifndef CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_NAME
-#define CHIP_DEVICE_CONFIG_ENABLE_COMMISSIONABLE_DEVICE_NAME 0
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_DEVICE_NAME
- *
- * Name of device.
- */
-#ifndef CHIP_DEVICE_CONFIG_DEVICE_NAME
-#define CHIP_DEVICE_CONFIG_DEVICE_NAME "Test Kitchen"
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_PAIRING_INITIAL_HINT
- *
- * Pairing Hint, bitmap value of methods to put device into pairing mode
- * when it has not yet been commissioned.
- *
- * Bits:
- * 0 - Power Cycle
- * 5 - See Device Manual
- */
-#ifndef CHIP_DEVICE_CONFIG_PAIRING_INITIAL_HINT
-#define CHIP_DEVICE_CONFIG_PAIRING_INITIAL_HINT                                                                                    \
-    (1 << CHIP_COMMISSIONING_HINT_INDEX_POWER_CYCLE | 1 << CHIP_COMMISSIONING_HINT_INDEX_SEE_MANUAL)
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_PAIRING_INITIAL_INSTRUCTION
- *
- * Pairing Instruction, when device has not yet been commissioned
- *
- * Meaning is depedent upon pairing hint value.
- */
-#ifndef CHIP_DEVICE_CONFIG_PAIRING_INITIAL_INSTRUCTION
-#define CHIP_DEVICE_CONFIG_PAIRING_INITIAL_INSTRUCTION ""
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_HINT
- *
- * Pairing Hint, bitmap value of methods to put device into pairing mode
- * when it has already been commissioned.
- *
- * Bits:
- * 2 - Visit Administrator UX (always true for secondary)
- * 5 - See Device Manual
- */
-#ifndef CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_HINT
-#define CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_HINT                                                                                  \
-    (1 << CHIP_COMMISSIONING_HINT_INDEX_SEE_ADMINISTRATOR_UX | 1 << CHIP_COMMISSIONING_HINT_INDEX_SEE_MANUAL)
-#endif
-
-/**
- * CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_INSTRUCTION
- *
- * Pairing Instruction, when device has not yet been commissioned
- *
- * Meaning is depedent upon pairing hint value.
- */
-#ifndef CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_INSTRUCTION
-#define CHIP_DEVICE_CONFIG_PAIRING_SECONDARY_INSTRUCTION ""
-#endif
-
 // -------------------- App Platform Configuration --------------------
 
 /**
@@ -1301,3 +1535,60 @@
 #ifndef CHIP_DISPATCH_EVENT_LONG_DISPATCH_TIME_WARNING_THRESHOLD_MS
 #define CHIP_DISPATCH_EVENT_LONG_DISPATCH_TIME_WARNING_THRESHOLD_MS 100
 #endif
+
+// -------------------- Miscellaneous --------------------
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_AUTOMATIC_CASE_RETRIES
+ *
+ * If 1, enable support for automatic CASE establishment retries.
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_AUTOMATIC_CASE_RETRIES
+#define CHIP_DEVICE_CONFIG_ENABLE_AUTOMATIC_CASE_RETRIES 1
+#endif
+
+#if CHIP_DEVICE_CONFIG_ENABLE_AUTOMATIC_CASE_RETRIES
+
+/**
+ * CHIP_DEVICE_CONFIG_AUTOMATIC_CASE_RETRY_INITIAL_DELAY_SECONDS
+ *
+ * The initial retry delay, in seconds, for our automatic CASE retries.
+ */
+#ifndef CHIP_DEVICE_CONFIG_AUTOMATIC_CASE_RETRY_INITIAL_DELAY_SECONDS
+#define CHIP_DEVICE_CONFIG_AUTOMATIC_CASE_RETRY_INITIAL_DELAY_SECONDS 1
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_AUTOMATIC_CASE_RETRY_MAX_BACKOFF
+ *
+ * The maximum number of times we back off, by a factor of 2 each time, from our
+ * initial CASE retry interval before we plateau.
+ */
+#ifndef CHIP_DEVICE_CONFIG_AUTOMATIC_CASE_RETRY_MAX_BACKOFF
+#define CHIP_DEVICE_CONFIG_AUTOMATIC_CASE_RETRY_MAX_BACKOFF 5
+#endif
+
+#endif // CHIP_DEVICE_CONFIG_ENABLE_AUTOMATIC_CASE_RETRIES
+
+/**
+ * CHIP_DEVICE_LAYER_NONE aims to turn off the device layer, for platforms that
+ * implement that in some alternate way.
+ */
+#ifndef CHIP_DEVICE_LAYER_NONE
+#define CHIP_DEVICE_LAYER_NONE 0
+#endif
+
+/**
+ * CHIP_DEVICE_CONFIG_ENABLE_NFC enables NFC communication for commissioning.
+ */
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_NFC
+#define CHIP_DEVICE_CONFIG_ENABLE_NFC 0
+#endif
+
+/**
+ * CHIP_DEVICE_ENABLE_PORT_PARAMS enables command-line parameters to set the
+ * port to use for POSIX example applications.
+ */
+#ifndef CHIP_DEVICE_ENABLE_PORT_PARAMS
+#define CHIP_DEVICE_ENABLE_PORT_PARAMS 0
+#endif // CHIP_DEVICE_ENABLE_PORT_PARAMS

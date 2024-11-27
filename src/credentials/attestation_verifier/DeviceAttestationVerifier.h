@@ -47,6 +47,7 @@ enum class AttestationVerificationResult : uint16_t
     kPaiVendorIdMismatch  = 205,
     kPaiAuthorityNotFound = 206,
     kPaiMissing           = 207,
+    kPaiAndDacRevoked     = 208,
 
     kDacExpired           = 300,
     kDacSignatureInvalid  = 301,
@@ -126,7 +127,7 @@ public:
     virtual ~AttestationTrustStore() = default;
 
     // Not copyable
-    AttestationTrustStore(const AttestationTrustStore &) = delete;
+    AttestationTrustStore(const AttestationTrustStore &)             = delete;
     AttestationTrustStore & operator=(const AttestationTrustStore &) = delete;
 
     /**
@@ -164,7 +165,7 @@ public:
     virtual ~WellKnownKeysTrustStore() = default;
 
     // Not copyable
-    WellKnownKeysTrustStore(const WellKnownKeysTrustStore &) = delete;
+    WellKnownKeysTrustStore(const WellKnownKeysTrustStore &)             = delete;
     WellKnownKeysTrustStore & operator=(const WellKnownKeysTrustStore &) = delete;
 
     /**
@@ -266,7 +267,7 @@ public:
     virtual ~DeviceAttestationVerifier() = default;
 
     // Not copyable
-    DeviceAttestationVerifier(const DeviceAttestationVerifier &) = delete;
+    DeviceAttestationVerifier(const DeviceAttestationVerifier &)             = delete;
     DeviceAttestationVerifier & operator=(const DeviceAttestationVerifier &) = delete;
 
     struct AttestationInfo
@@ -295,7 +296,6 @@ public:
     {
     public:
         AttestationDeviceInfo(const AttestationInfo & attestationInfo);
-        AttestationDeviceInfo(const ByteSpan & attestationElementsBuffer, const ByteSpan paiDerBuffer, const ByteSpan dacDerBuffer);
 
         ~AttestationDeviceInfo() = default;
 
@@ -318,10 +318,16 @@ public:
             }
         }
 
+        uint16_t BasicInformationVendorId() const { return mBasicInformationVendorId; }
+
+        uint16_t BasicInformationProductId() const { return mBasicInformationProductId; }
+
     private:
         Platform::ScopedMemoryBufferWithSize<uint8_t> mPaiDerBuffer;
         Platform::ScopedMemoryBufferWithSize<uint8_t> mDacDerBuffer;
         Platform::ScopedMemoryBufferWithSize<uint8_t> mCdBuffer;
+        uint16_t mBasicInformationVendorId;
+        uint16_t mBasicInformationProductId;
     };
 
     typedef void (*OnAttestationInformationVerification)(void * context, const AttestationInfo & info,
@@ -382,6 +388,16 @@ public:
                                                            const ByteSpan & csrNonce) = 0;
 
     /**
+     * @brief Verify whether or not the given DAC chain is revoked.
+     *
+     * @param[in] info All of the information required to check for revoked DAC chain.
+     * @param[in] onCompletion Callback handler to provide Attestation Information Verification result to the caller of
+     *                         CheckForRevokedDACChain()
+     */
+    virtual void CheckForRevokedDACChain(const AttestationInfo & info,
+                                         Callback::Callback<OnAttestationInformationVerification> * onCompletion) = 0;
+
+    /**
      * @brief Get the trust store used for the attestation verifier.
      *
      * Returns nullptr if not supported. Be careful not to hold-on to the trust store
@@ -401,6 +417,28 @@ protected:
     // Default to support the "development" test key for legacy purposes (since the DefaultDACVerifier)
     // always supported development keys.
     bool mEnableCdTestKeySupport = true;
+};
+
+/**
+ * @brief Interface for checking the device attestation revocation status
+ *
+ */
+class DeviceAttestationRevocationDelegate
+{
+public:
+    DeviceAttestationRevocationDelegate()          = default;
+    virtual ~DeviceAttestationRevocationDelegate() = default;
+
+    /**
+     * @brief Verify whether or not the given DAC chain is revoked.
+     *
+     * @param[in] info All of the information required to check for revoked DAC chain.
+     * @param[in] onCompletion Callback handler to provide Attestation Information Verification result to the caller of
+     *                         CheckForRevokedDACChain().
+     */
+    virtual void
+    CheckForRevokedDACChain(const DeviceAttestationVerifier::AttestationInfo & info,
+                            Callback::Callback<DeviceAttestationVerifier::OnAttestationInformationVerification> * onCompletion) = 0;
 };
 
 /**

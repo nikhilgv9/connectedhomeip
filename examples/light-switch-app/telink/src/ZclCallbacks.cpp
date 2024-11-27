@@ -23,6 +23,8 @@
 #include <app/ConcreteAttributePath.h>
 #include <lib/support/logging/CHIPLogging.h>
 
+LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
+
 using namespace chip;
 using namespace chip::app::Clusters;
 
@@ -33,15 +35,7 @@ void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath & 
     AttributeId attributeId = attributePath.mAttributeId;
     ChipLogProgress(Zcl, "Cluster callback: " ChipLogFormatMEI, ChipLogValueMEI(clusterId));
 
-    if (clusterId == OnOffSwitchConfiguration::Id)
-    {
-        // Following print is used for printing single-byte value. Change it for printing non-single-byte values.
-        ChipLogProgress(Zcl, "OnOff Switch Configuration attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
-                        ChipLogValueMEI(attributeId), type, *value, size);
-
-        // WIP Apply attribute change to Light
-    }
-    else if (clusterId == Identify::Id)
+    if (clusterId == Identify::Id)
     {
         // Following print is used for printing single-byte value. Change it for printing non-single-byte values.
         ChipLogProgress(Zcl, "Identify attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",

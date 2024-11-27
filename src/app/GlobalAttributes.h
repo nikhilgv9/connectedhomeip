@@ -1,5 +1,5 @@
 /*
- *    Copyright (c) 2022 Project CHIP Authors
+ *    Copyright (c) 2022-2023 Project CHIP Authors
  *    All rights reserved.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,7 @@
 #pragma once
 
 #include <app-common/zap-generated/ids/Attributes.h>
+#include <app/AppConfig.h>
 #include <lib/support/CodeUtils.h>
 
 namespace chip {
@@ -35,6 +36,19 @@ constexpr AttributeId GlobalAttributesNotInMetadata[] = {
 };
 
 static_assert(ArrayIsSorted(GlobalAttributesNotInMetadata), "Array of global attribute ids must be sorted");
+
+inline bool IsSupportedGlobalAttributeNotInMetadata(AttributeId attributeId)
+{
+    for (auto & attr : GlobalAttributesNotInMetadata)
+    {
+        if (attr == attributeId)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 } // namespace app
 } // namespace chip

@@ -36,7 +36,7 @@
 
 // shell app uses openthread but does not have the NETWORK_COMMISSIONING cluster or zap config
 // Do not instantiate the NETWORK_COMMISSIONING thread driver
-#define _NO_NETWORK_COMMISSIONING_DRIVER_
+#define _NO_GENERIC_THREAD_NETWORK_COMMISSIONING_DRIVER_
 
 // For convenience, enable Chip Security Test Mode and disable the requirement for
 // authentication in various protocols.
@@ -98,13 +98,6 @@
  * is found in Chip NV storage.
  */
 #define CHIP_DEVICE_CONFIG_TEST_SERIAL_NUMBER "TEST_SN"
-
-/**
- * CHIP_DEVICE_CONFIG_EVENT_LOGGING_DEBUG_BUFFER_SIZE
- *
- * A size, in bytes, of the individual debug event logging buffer.
- */
-#define CHIP_DEVICE_CONFIG_EVENT_LOGGING_DEBUG_BUFFER_SIZE (512)
 
 /**
  * CHIP_DEVICE_CONFIG_THREAD_ENABLE_CLI

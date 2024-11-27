@@ -18,7 +18,6 @@
 
 get_filename_component(CHIP_ROOT ../third_party/connectedhomeip REALPATH)
 get_filename_component(CHEF ${CMAKE_CURRENT_SOURCE_DIR}/../../ REALPATH)
-get_filename_component(GEN_DIR ${CHEF}/out/${SAMPLE_NAME}/zap-generated REALPATH)
 
 # include(${CMAKE_CURRENT_LIST_DIR}/../../project_include.cmake)
 
@@ -33,7 +32,8 @@ set(PRIV_INCLUDE_DIRS_LIST
                       "${CMAKE_SOURCE_DIR}/third_party/connectedhomeip/examples/platform/esp32/"
                       "${CMAKE_SOURCE_DIR}/third_party/connectedhomeip/third_party/nlio/repo/include"
                       "${CMAKE_SOURCE_DIR}/../"
-                      "${GEN_DIR}/../"
+                      "${CMAKE_SOURCE_DIR}/../common"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters"
                       "${CMAKE_SOURCE_DIR}/main/include/"
 )
 
@@ -62,12 +62,25 @@ message(STATUS "** End of Cluster List **")
 set(SRC_DIRS_LIST
                       ${SRC_DIRS_LIST}
                       "${CMAKE_CURRENT_LIST_DIR}"
-                      "${GEN_DIR}"
+                      "${CMAKE_SOURCE_DIR}/../common"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/audio-output/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/channel/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/door-lock/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/keypad-input/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/low-power/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/media-input/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/media-playback/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/refrigerator-and-temperature-controlled-cabinet-mode/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/resource-monitoring/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/switch/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/target-navigator/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/temperature-control/"
+                      "${CMAKE_SOURCE_DIR}/../common/clusters/wake-on-lan/"
+                      "${CMAKE_SOURCE_DIR}/third_party/connectedhomeip/zzz_generated/app-common/app-common/zap-generated/attributes"
                       "${CMAKE_SOURCE_DIR}/third_party/connectedhomeip/src/app/server"
                       "${CMAKE_SOURCE_DIR}/third_party/connectedhomeip/src/app/util"
+                      "${CMAKE_SOURCE_DIR}/third_party/connectedhomeip/src/app/util/persistence"
                       "${CMAKE_SOURCE_DIR}/third_party/connectedhomeip/src/app/reporting"
-                      "${CMAKE_SOURCE_DIR}/third_party/connectedhomeip/zzz_generated/app-common/app-common/zap-generated/attributes"
-                      "${CMAKE_SOURCE_DIR}/../common"
 )
 
 if (CONFIG_ENABLE_CHIP_SHELL)
@@ -87,8 +100,14 @@ set(PRIV_INCLUDE_DIRS_LIST  "${PRIV_INCLUDE_DIRS_LIST}"
                      "${CMAKE_SOURCE_DIR}/../../common/pigweed/esp32"
                      "${CMAKE_SOURCE_DIR}/../../common/screen-framework/include/"
                      "${CMAKE_SOURCE_DIR}/../../../src/lib/support"
-                     "${IDF_PATH}/components/freertos/include/freertos"
 )
+
+if (${IDF_VERSION_MAJOR} LESS 5)
+    list(APPEND PRIV_INCLUDE_DIRS_LIST "${IDF_PATH}/components/freertos/include/freertos")
+else()
+    list(APPEND PRIV_INCLUDE_DIRS_LIST "${IDF_PATH}/components/freertos/FreeRTOS-Kernel/include/freertos")
+endif()
+
 set(SRC_DIRS_LIST  "${SRC_DIRS_LIST}"
                      "${CMAKE_SOURCE_DIR}/../../platform/esp32"
                      "${CMAKE_SOURCE_DIR}/../../common/pigweed"
@@ -104,11 +123,14 @@ endif (CONFIG_ENABLE_PW_RPC)
 idf_component_register(PRIV_INCLUDE_DIRS
                       "${CHIP_SHELL_DIR}/shell_common/include"
                       "${PRIV_INCLUDE_DIRS_LIST}"
-                      PRIV_REQUIRES chip nvs_flash bt console esp32_mbedtls QRCode tft screen-framework spidriver
                       SRC_DIRS ${SRC_DIRS_LIST})
+
+# Forces the linker to include common/stubs.cpp
+target_link_libraries(${COMPONENT_LIB} INTERFACE "-u chef_include_stubs_impl")
 
 include("${CHIP_ROOT}/build/chip/esp32/esp32_codegen.cmake")
 chip_app_component_codegen("${CHEF}/devices/${SAMPLE_NAME}.matter")
+chip_app_component_zapgen("${CHEF}/devices/${SAMPLE_NAME}.zap")
 
 set_property(TARGET ${COMPONENT_LIB} PROPERTY CXX_STANDARD 17)
 target_compile_options(${COMPONENT_LIB} PRIVATE "-DCHIP_HAVE_CONFIG_H")
@@ -130,6 +152,17 @@ pw_proto_library(attributes_service
     ${CHIP_ROOT}/examples/common/pigweed/protos/attributes_service.options
   PREFIX
     attributes_service
+  STRIP_PREFIX
+    ${CHIP_ROOT}/examples/common/pigweed/protos
+  DEPS
+    pw_protobuf.common_proto
+)
+
+pw_proto_library(boolean_state_service
+  SOURCES
+    ${CHIP_ROOT}/examples/common/pigweed/protos/boolean_state_service.proto
+  PREFIX
+    boolean_state_service
   STRIP_PREFIX
     ${CHIP_ROOT}/examples/common/pigweed/protos
   DEPS
@@ -186,6 +219,7 @@ pw_proto_library(wifi_service
 
 target_link_libraries(${COMPONENT_LIB} PUBLIC
   attributes_service.nanopb_rpc
+  boolean_state_service.nanopb_rpc
   button_service.nanopb_rpc
   descriptor_service.nanopb_rpc
   device_service.nanopb_rpc
@@ -194,6 +228,7 @@ target_link_libraries(${COMPONENT_LIB} PUBLIC
   pw_log
   pw_rpc.server
   pw_sys_io
+  pw_trace
   pw_trace_tokenized
   pw_trace_tokenized.trace_buffer
   pw_trace_tokenized.rpc_service
@@ -204,10 +239,12 @@ target_link_libraries(${COMPONENT_LIB} PUBLIC
 target_link_options(${COMPONENT_LIB}
   PUBLIC
     "-T${PIGWEED_ROOT}/pw_tokenizer/pw_tokenizer_linker_sections.ld"
+    "-L${PIGWEED_ROOT}/pw_tokenizer"
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE
                        "-DPW_RPC_ATTRIBUTE_SERVICE=1"
+                       "-DPW_RPC_BOOLEAN_STATE_SERVICE=1"
                        "-DPW_RPC_BUTTON_SERVICE=1"
                        "-DPW_RPC_DEVICE_SERVICE=1"
                        "-DPW_RPC_DESCRIPTOR_SERVICE=1"

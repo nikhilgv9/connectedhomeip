@@ -26,7 +26,7 @@
 #include "TargetEndpointInfo.h"
 #include "TargetVideoPlayerInfo.h"
 
-constexpr uint32_t kCommissionerDiscoveryTimeoutInMs = 5 * 1000;
+inline constexpr uint32_t kCommissionerDiscoveryTimeoutInMs = 5 * 1000;
 
 CHIP_ERROR ProcessClusterCommand(int argc, char ** argv);
 
@@ -34,7 +34,7 @@ CHIP_ERROR DiscoverCommissioners();
 
 CHIP_ERROR RequestCommissioning(int index);
 
-void PrepareForCommissioning(const chip::Dnssd::DiscoveredNodeData * selectedCommissioner = nullptr);
+void PrepareForCommissioning(const chip::Dnssd::CommissionNodeData * selectedCommissioner = nullptr);
 
 void InitCommissioningFlow(intptr_t commandArg);
 

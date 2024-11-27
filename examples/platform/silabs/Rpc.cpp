@@ -17,11 +17,11 @@
  */
 
 #include "AppTask.h"
-#include "FreeRTOS.h"
 #include "PigweedLoggerMutex.h"
 #include "pigweed/RpcService.h"
 #include "pw_sys_io_efr32/init.h"
-#include "task.h"
+#include <cmsis_os2.h>
+#include <sl_cmsis_os2_common.h>
 
 #if defined(PW_RPC_ATTRIBUTE_SERVICE) && PW_RPC_ATTRIBUTE_SERVICE
 #include "pigweed/rpc_services/Attributes.h"
@@ -82,7 +82,7 @@ class Efr32Button final : public Button
 public:
     pw::Status Event(const chip_rpc_ButtonEvent & request, pw_protobuf_Empty & response) override
     {
-        AppTask::GetAppTask().ButtonEventHandler(SL_SIMPLE_BUTTON_INSTANCE(request.idx) /* PB 0 or PB 1 */, request.pushed);
+        AppTask::GetAppTask().ButtonEventHandler(request.idx /* PB 0 or PB 1 */, request.pushed);
         return pw::OkStatus();
     }
 };
@@ -92,29 +92,48 @@ public:
 class Efr32Device final : public Device
 {
 public:
-    pw::Status Reboot(const pw_protobuf_Empty & request, pw_protobuf_Empty & response) override
+    pw::Status Reboot(const chip_rpc_RebootRequest & request, pw_protobuf_Empty & response) override
     {
-        mRebootTimer = xTimerCreateStatic("Reboot", kRebootTimerPeriodTicks, false, nullptr, RebootHandler, &mRebootTimerBuffer);
-        xTimerStart(mRebootTimer, 0);
+        uint32_t delayMs = kRebootTimerPeriodMs;
+        if (request.delay_ms != 0)
+        {
+            delayMs = request.delay_ms;
+        }
+        else
+        {
+            ChipLogProgress(NotSpecified, "Did not receive a reboot delay. Defaulting to %d ms",
+                            static_cast<int>(kRebootTimerPeriodMs));
+        }
+
+        mRebootTimer        = osTimerNew(RebootHandler, osTimerOnce, nullptr, &mRebootTimerAttr);
+        uint32_t delayTicks = ((uint64_t) osKernelGetTickFreq() * delayMs) / 1000;
+        osTimerStart(mRebootTimer, delayTicks);
         return pw::OkStatus();
     }
 
 private:
-    static constexpr TickType_t kRebootTimerPeriodTicks = 1000;
-    TimerHandle_t mRebootTimer;
-    StaticTimer_t mRebootTimerBuffer;
+    static constexpr uint32_t kRebootTimerPeriodMs = 1000;
+    osTimerId_t mRebootTimer;
+    osTimer_t mRebootTimerBuffer;
+    osTimerAttr_t mRebootTimerAttr = { .name = "Reboot", .cb_mem = &mRebootTimerBuffer, .cb_size = osTimerCbSize };
 
-    static void RebootHandler(TimerHandle_t) { NVIC_SystemReset(); }
+    static void RebootHandler(void * timerCbArg) { NVIC_SystemReset(); }
 };
 #endif // defined(PW_RPC_DEVICE_SERVICE) && PW_RPC_DEVICE_SERVICE
 
 namespace {
 
-#define RPC_TASK_STACK_SIZE 4096
-#define RPC_TASK_PRIORITY 1
-static TaskHandle_t sRpcTaskHandle;
-StaticTask_t sRpcTaskBuffer;
-StackType_t sRpcTaskStack[RPC_TASK_STACK_SIZE];
+static osThreadId_t sRpcTaskHandle;
+osThread_t sRpcTaskControlBlock;
+constexpr uint32_t kRpcTaskSize = 4096;
+uint8_t sRpcTaskStack[kRpcTaskSize];
+constexpr osThreadAttr_t kRpcTaskAttr = { .name       = "RPC",
+                                          .attr_bits  = osThreadDetached,
+                                          .cb_mem     = &sRpcTaskControlBlock,
+                                          .cb_size    = osThreadCbSize,
+                                          .stack_mem  = sRpcTaskStack,
+                                          .stack_size = kRpcTaskSize,
+                                          .priority   = osPriorityLow };
 
 #if defined(PW_RPC_ATTRIBUTE_SERVICE) && PW_RPC_ATTRIBUTE_SERVICE
 Attributes attributes_service;
@@ -149,7 +168,7 @@ Thread thread;
 #endif // defined(PW_RPC_THREAD_SERVICE) && PW_RPC_THREAD_SERVICE
 
 #if defined(PW_RPC_TRACING_SERVICE) && PW_RPC_TRACING_SERVICE
-pw::trace::TraceService trace_service;
+pw::trace::TraceService trace_service(pw::trace::GetTokenizedTracer());
 #endif // defined(PW_RPC_TRACING_SERVICE) && PW_RPC_TRACING_SERVICE
 
 void RegisterServices(pw::rpc::Server & server)
@@ -204,8 +223,7 @@ void Init()
     pw_sys_io_Init();
 
     // Start App task.
-    sRpcTaskHandle = xTaskCreateStatic(RunRpcService, "RPC_TASK", ArraySize(sRpcTaskStack), nullptr, RPC_TASK_PRIORITY,
-                                       sRpcTaskStack, &sRpcTaskBuffer);
+    sRpcTaskHandle = osThreadNew(RunRpcService, nullptr, &kRpcTaskAttr);
 }
 
 } // namespace rpc

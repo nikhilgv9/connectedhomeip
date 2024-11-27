@@ -31,6 +31,7 @@
 #include "platform/ConfigurationManager.h"
 #include "platform/DiagnosticDataProvider.h"
 #include "platform/PlatformManager.h"
+#include <crypto/CHIPCryptoPAL.h>
 #include <platform/DeviceInstanceInfoProvider.h>
 #include <setup_payload/QRCodeSetupPayloadGenerator.h>
 
@@ -188,9 +189,9 @@ public:
 private:
     std::optional<uint16_t> mDiscriminatorOverride;
     std::optional<uint32_t> mPasscodeOverride;
-    Spake2pVerifierSerialized mVerifierBuf;
+    Crypto::Spake2pVerifierSerialized mVerifierBuf;
     std::optional<ByteSpan> mVerifierOverride;
-    uint8_t mSaltBuf[kSpake2p_Max_PBKDF_Salt_Length];
+    uint8_t mSaltBuf[Crypto::kSpake2p_Max_PBKDF_Salt_Length];
     std::optional<ByteSpan> mSaltOverride;
     std::optional<uint32_t> mIterationCountOverride;
     DeviceLayer::CommissionableDataProvider * mCommissionableDataProvider = nullptr;
@@ -217,7 +218,7 @@ public:
         return pw::OkStatus();
     }
 
-    virtual pw::Status Reboot(const pw_protobuf_Empty & request, pw_protobuf_Empty & response)
+    virtual pw::Status Reboot(const chip_rpc_RebootRequest & request, pw_protobuf_Empty & response)
     {
         return pw::Status::Unimplemented();
     }
@@ -372,7 +373,7 @@ public:
         if (DeviceLayer::GetDeviceInstanceInfoProvider()->GetSerialNumber(response.serial_number, sizeof(response.serial_number)) !=
             CHIP_NO_ERROR)
         {
-            return pw::Status::Internal();
+            response.serial_number[0] = '\0'; // optional serial field not set.
         }
 
         // Create buffer for QR code that can fit max size and null terminator.
@@ -430,7 +431,7 @@ public:
 
         if (Server::GetInstance().GetCommissioningWindowManager().IsCommissioningWindowOpen() &&
             Server::GetInstance().GetCommissioningWindowManager().CommissioningWindowStatusForCluster() !=
-                app::Clusters::AdministratorCommissioning::CommissioningWindowStatus::kEnhancedWindowOpen)
+                app::Clusters::AdministratorCommissioning::CommissioningWindowStatusEnum::kEnhancedWindowOpen)
         {
             // Cache values before closing to restore them after restart.
             app::DataModel::Nullable<VendorId> vendorId = Server::GetInstance().GetCommissioningWindowManager().GetOpenerVendorId();
@@ -444,7 +445,7 @@ public:
             }
             // Let other tasks possibly work since Commissioning window close/open are "heavy"
             if (Server::GetInstance().GetCommissioningWindowManager().CommissioningWindowStatusForCluster() !=
-                    app::Clusters::AdministratorCommissioning::CommissioningWindowStatus::kWindowNotOpen &&
+                    app::Clusters::AdministratorCommissioning::CommissioningWindowStatusEnum::kWindowNotOpen &&
                 !vendorId.IsNull() && !fabricIndex.IsNull())
             {
                 DeviceLayer::StackLock lock;

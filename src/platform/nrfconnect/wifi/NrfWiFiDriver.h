@@ -16,15 +16,18 @@
  */
 
 #pragma once
+
+#include "WiFiManager.h"
+
 #include <platform/NetworkCommissioning.h>
 
 namespace chip {
 namespace DeviceLayer {
 namespace NetworkCommissioning {
 
-constexpr uint8_t kMaxWiFiNetworks                  = 1;
-constexpr uint8_t kWiFiScanNetworksTimeOutSeconds   = 10;
-constexpr uint8_t kWiFiConnectNetworkTimeoutSeconds = 120;
+inline constexpr uint8_t kMaxWiFiNetworks                  = 1;
+inline constexpr uint8_t kWiFiScanNetworksTimeOutSeconds   = 10;
+inline constexpr uint8_t kWiFiConnectNetworkTimeoutSeconds = 35;
 
 class NrfWiFiScanResponseIterator : public Iterator<WiFiScanResponse>
 {
@@ -45,8 +48,8 @@ class NrfWiFiDriver final : public WiFiDriver
 public:
     // Define non-volatile storage keys for SSID and password.
     // The naming convention is aligned with DefaultStorageKeyAllocator class.
-    static constexpr const char * kSsidKey = "g/wi/s";
-    static constexpr const char * kPassKey = "g/wi/p";
+    static constexpr char kSsidKey[] = "g/wi/s";
+    static constexpr char kPassKey[] = "g/wi/p";
 
     class WiFiNetworkIterator final : public NetworkIterator
     {
@@ -60,19 +63,6 @@ public:
     private:
         NrfWiFiDriver * mDriver;
         bool mExhausted{ false };
-    };
-
-    struct WiFiNetwork
-    {
-        uint8_t ssid[DeviceLayer::Internal::kMaxWiFiSSIDLength];
-        size_t ssidLen = 0;
-        uint8_t pass[DeviceLayer::Internal::kMaxWiFiKeyLength];
-        size_t passLen = 0;
-
-        bool IsConfigured() const { return ssidLen > 0; }
-        ByteSpan GetSsidSpan() const { return ByteSpan(ssid, ssidLen); }
-        ByteSpan GetPassSpan() const { return ByteSpan(pass, passLen); }
-        void Clear() { ssidLen = 0; }
     };
 
     // BaseDriver
@@ -96,6 +86,7 @@ public:
     Status AddOrUpdateNetwork(ByteSpan ssid, ByteSpan credentials, MutableCharSpan & outDebugText,
                               uint8_t & outNetworkIndex) override;
     void ScanNetworks(ByteSpan ssid, ScanCallback * callback) override;
+    uint32_t GetSupportedWiFiBandsMask() const override;
 
     static NrfWiFiDriver & Instance()
     {
@@ -103,17 +94,16 @@ public:
         return sInstance;
     }
 
-    void OnConnectWiFiNetwork();
-    void OnConnectWiFiNetworkFailed();
-    void OnNetworkStatusChanged(Status status);
-    void OnScanWiFiNetworkDone(int status, WiFiScanResponse * result);
+    void OnNetworkConnStatusChanged(const wifi_conn_status & connStatus);
+    void OnScanWiFiNetworkResult(const WiFiScanResponse & result);
+    void OnScanWiFiNetworkDone(const WiFiManager::ScanDoneStatus & status);
 
 private:
     void LoadFromStorage();
 
     ConnectCallback * mpConnectCallback{ nullptr };
     NetworkStatusChangeCallback * mpNetworkStatusChangeCallback{ nullptr };
-    WiFiNetwork mStagingNetwork;
+    WiFiManager::WiFiNetwork mStagingNetwork;
     NrfWiFiScanResponseIterator mScanResponseIterator;
     ScanCallback * mScanCallback{ nullptr };
 };

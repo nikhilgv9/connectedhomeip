@@ -18,7 +18,6 @@
 #pragma once
 
 #include <app/util/basic-types.h>
-
 #include <cstdint>
 
 /**
@@ -132,27 +131,46 @@ union EmberAfDefaultOrMinMaxAttributeValue
 struct EmberAfAttributeMetadata
 {
     /**
+     * Pointer to the default value union. Actual value stored
+     * depends on the mask.
+     */
+    EmberAfDefaultOrMinMaxAttributeValue defaultValue;
+
+    /**
      * Attribute ID, according to ZCL specs.
      */
     chip::AttributeId attributeId;
-    /**
-     * Attribute type, according to ZCL specs.
-     */
-    EmberAfAttributeType attributeType;
+
     /**
      * Size of this attribute in bytes.
      */
     uint16_t size;
+
+    /**
+     * Attribute type, according to ZCL specs.
+     */
+    EmberAfAttributeType attributeType;
+
     /**
      * Attribute mask, tagging attribute with specific
      * functionality.
      */
     EmberAfAttributeMask mask;
+
     /**
-     * Pointer to the default value union. Actual value stored
-     * depends on the mask.
+     * Check wether this attribute is a boolean based on its type according to the spec.
      */
-    EmberAfDefaultOrMinMaxAttributeValue defaultValue;
+    bool IsBoolean() const;
+
+    /**
+     * Check wether this attribute is signed based on its type according to the spec.
+     */
+    bool IsSignedIntegerAttribute() const;
+
+    /**
+     * Check whether this attribute has a define min and max.
+     */
+    bool HasMinMax() const { return mask & ATTRIBUTE_MASK_MIN_MAX; }
 
     /**
      * Check whether this attribute is nullable.
@@ -194,14 +212,3 @@ bool emberAfIsStringAttributeType(EmberAfAttributeType attributeType);
 
 /** @brief Returns true if the given attribute type is a long string. */
 bool emberAfIsLongStringAttributeType(EmberAfAttributeType attributeType);
-
-/*
- * @brief Function that determines the length of a zigbee Cluster Library string
- *   (where the first byte is assumed to be the length).
- */
-uint8_t emberAfStringLength(const uint8_t * buffer);
-/*
- * @brief Function that determines the length of a zigbee Cluster Library long string.
- *   (where the first two bytes are assumed to be the length).
- */
-uint16_t emberAfLongStringLength(const uint8_t * buffer);

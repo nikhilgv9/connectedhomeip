@@ -20,7 +20,7 @@
  *   This file implements the handler for data model messages.
  */
 
-#include "AppConfig.h"
+#include <plat.h>
 
 #include <AppTask.h>
 #include <app-common/zap-generated/ids/Attributes.h>
@@ -54,12 +54,6 @@ void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath & 
     {
         GetAppTask().PostEvent(AppTask::APP_EVENT_LIGHTING_COLOR);
         ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
-                        ChipLogValueMEI(attributeId), type, *value, size);
-    }
-    else if (clusterId == OnOffSwitchConfiguration::Id)
-    {
-        GetAppTask().PostEvent(AppTask::APP_EVENT_LIGHTING_ONOFF);
-        ChipLogProgress(Zcl, "OnOff Switch Configuration attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
                         ChipLogValueMEI(attributeId), type, *value, size);
     }
     else if (clusterId == Identify::Id)

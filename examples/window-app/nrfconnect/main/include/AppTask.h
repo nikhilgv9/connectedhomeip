@@ -24,10 +24,12 @@
 
 #if CONFIG_CHIP_FACTORY_DATA
 #include <platform/nrfconnect/FactoryDataProvider.h>
+#else
+#include <platform/nrfconnect/DeviceInstanceInfoProviderImpl.h>
 #endif
 
-#ifdef CONFIG_MCUMGR_SMP_BT
-#include "dfu_over_smp.h"
+#ifdef CONFIG_MCUMGR_TRANSPORT_BT
+#include "DFUOverSMP.h"
 #endif
 
 struct k_timer;
@@ -70,10 +72,6 @@ private:
     static void ChipEventHandler(const chip::DeviceLayer::ChipDeviceEvent * event, intptr_t arg);
     static void ButtonEventHandler(uint32_t buttonState, uint32_t hasChanged);
     static void UpdateStatusLED();
-
-#ifdef CONFIG_MCUMGR_SMP_BT
-    static void RequestSMPAdvertisingStart(void);
-#endif
 
     FunctionEvent mFunction{ FunctionEvent::NoneSelected };
     OperationalState mMoveType{ OperationalState::MovingUpOrOpen };

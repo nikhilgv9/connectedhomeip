@@ -272,4 +272,27 @@
 #endif
 #endif // INET_CONFIG_UDP_SOCKET_PKTINFO
 
+/**
+ *  @def HAVE_SO_BINDTODEVICE
+ *
+ *  @brief
+ *    Should be set to 1 if the SO_BINDTODEVICE option to setsockopt is
+ *    available.
+ */
+#ifndef HAVE_SO_BINDTODEVICE
+#define HAVE_SO_BINDTODEVICE 0
+#endif
+
+/**
+ *  @def INET_CONFIG_UDP_SOCKET_MREQN
+ *
+ *  @brief
+ *    Should be set to 1 if your platform can handle struct ip_mreqn,
+ *    mandatory in UDPEndPointSocket.cpp
+ */
+
+#ifndef INET_CONFIG_UDP_SOCKET_MREQN
+#define INET_CONFIG_UDP_SOCKET_MREQN 0
+#endif
+
 // clang-format on

@@ -57,11 +57,12 @@ public:
         return subjectDescriptor;
     }
 
-    bool RequireMRP() const override { return false; }
+    bool AllowsMRP() const override { return false; }
+    bool AllowsLargePayload() const override { return false; }
 
-    const ReliableMessageProtocolConfig & GetRemoteMRPConfig() const override
+    const SessionParameters & GetRemoteSessionParameters() const override
     {
-        static const ReliableMessageProtocolConfig cfg(GetDefaultMRPConfig());
+        static const SessionParameters cfg(GetDefaultMRPConfig());
         VerifyOrDie(false);
         return cfg;
     }
@@ -70,6 +71,13 @@ public:
 
     System::Clock::Milliseconds32 GetAckTimeout() const override
     {
+        VerifyOrDie(false);
+        return System::Clock::Timeout();
+    }
+
+    System::Clock::Milliseconds32 GetMessageReceiptTimeout(System::Clock::Timestamp ourLastActivity) const override
+    {
+        // There are no timeouts for group sessions.
         VerifyOrDie(false);
         return System::Clock::Timeout();
     }
@@ -108,11 +116,12 @@ public:
         return Access::SubjectDescriptor(); // no subject exists for outgoing group session.
     }
 
-    bool RequireMRP() const override { return false; }
+    bool AllowsMRP() const override { return false; }
+    bool AllowsLargePayload() const override { return false; }
 
-    const ReliableMessageProtocolConfig & GetRemoteMRPConfig() const override
+    const SessionParameters & GetRemoteSessionParameters() const override
     {
-        static const ReliableMessageProtocolConfig cfg(GetDefaultMRPConfig());
+        static const SessionParameters cfg(GetDefaultMRPConfig());
         VerifyOrDie(false);
         return cfg;
     }
@@ -121,6 +130,13 @@ public:
 
     System::Clock::Milliseconds32 GetAckTimeout() const override
     {
+        VerifyOrDie(false);
+        return System::Clock::Timeout();
+    }
+
+    System::Clock::Milliseconds32 GetMessageReceiptTimeout(System::Clock::Timestamp ourLastActivity) const override
+    {
+        // There are no timeouts for group sessions.
         VerifyOrDie(false);
         return System::Clock::Timeout();
     }

@@ -22,7 +22,10 @@
 
 #include <app_control.h>
 
-#include <platform/CHIPDeviceBuildConfig.h>
+#include <lib/core/CHIPConfig.h>
+#include <platform/CHIPDeviceConfig.h>
+
+#include <string>
 
 namespace {
 
@@ -38,7 +41,7 @@ static constexpr Option sOptions[] = {
 #if CHIP_DEVICE_CONFIG_ENABLE_CHIPOBLE
     { "ble-device", false },
 #endif
-#if CHIP_DEVICE_CONFIG_ENABLE_WPA
+#if CHIP_DEVICE_CONFIG_ENABLE_WIFI
     { "wifi", true },
 #endif
 #if CHIP_ENABLE_OPENTHREAD

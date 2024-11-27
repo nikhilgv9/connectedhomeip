@@ -1,21 +1,17 @@
-#Matter `Genio` Lighting Example
+# Matter `Genio` Lighting Example
 
 An example showing the use of Matter on the MediaTek `Genio` MT793X.
 
 <hr>
 
--   [Matter Genio Lighting Example](#chip-genio-lighting-example)
+-   [Matter Genio Lighting Example](#matter-genio-lighting-example)
     -   [Introduction](#introduction)
     -   [Building](#building)
-        -   [Note](#note)
     -   [Flashing the Application](#flashing-the-application)
-    -   [Viewing Logging Output](#viewing-logging-output)
     -   [Running the Complete Example](#running-the-complete-example)
         -   [Notes](#notes)
 
 <hr>
-
-<a name="intro"></a>
 
 ## Introduction
 
@@ -31,8 +27,6 @@ device which will then join the network.
 The lighting example is intended to serve both as a means to explore the
 workings of Matter as well as a template for creating real products based on the
 MediaTek platform.
-
-<a name="building"></a>
 
 ## Building
 
@@ -92,7 +86,7 @@ MediaTek platform.
     Chip tool standalone, Android or iOS app
 
     [CHIP
-    Tool]](https://github.com/project-chip/connectedhomeip/blob/master/docs/guides/chip_tool_guide.md)
+    Tool]](https://github.com/project-chip/connectedhomeip/blob/master/docs/development_controllers/chip-tool/chip_tool_guide.md)
 
     Here is an example with the CHIP Tool controller:
 

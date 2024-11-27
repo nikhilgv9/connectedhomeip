@@ -26,7 +26,7 @@
 
 #include <platform/internal/GenericConfigurationManagerImpl.h>
 
-#include <platform/silabs/EFR32Config.h>
+#include <platform/silabs/SilabsConfig.h>
 
 namespace chip {
 namespace DeviceLayer {
@@ -34,7 +34,7 @@ namespace DeviceLayer {
 /**
  * Concrete implementation of the ConfigurationManager singleton object for the EFR32 platform.
  */
-class ConfigurationManagerImpl : public Internal::GenericConfigurationManagerImpl<Internal::EFR32Config>
+class ConfigurationManagerImpl : public Internal::GenericConfigurationManagerImpl<Internal::SilabsConfig>
 {
 public:
     // This returns an instance of this class.
@@ -45,6 +45,8 @@ public:
     CHIP_ERROR IncreaseBootCount(void);
     CHIP_ERROR GetTotalOperationalHours(uint32_t & totalOperationalHours);
     CHIP_ERROR StoreTotalOperationalHours(uint32_t totalOperationalHours);
+
+    void ClearThreadStack();
 
 private:
     // ===== Members that implement the ConfigurationManager public interface.
@@ -73,7 +75,6 @@ private:
     void RunConfigUnitTest(void) override;
 
     // ===== Private members reserved for use by this class only.
-    uint32_t rebootCause;
     static void DoFactoryReset(intptr_t arg);
 };
 

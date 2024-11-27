@@ -22,7 +22,6 @@
  */
 
 #include "ConnectivityUtils.h"
-#include <app-common/zap-generated/enums.h>
 #include <platform/internal/CHIPDeviceLayerInternal.h>
 
 #include <netdb.h>
@@ -240,10 +239,10 @@ double ConnectivityUtils::ConvertFrequenceToFloat(const iw_freq * in)
     return result;
 }
 */
-InterfaceType ConnectivityUtils::GetInterfaceConnectionType(const char * ifname)
+InterfaceTypeEnum ConnectivityUtils::GetInterfaceConnectionType(const char * ifname)
 {
     // MW320 only has the wifi interface
-    InterfaceType ret = InterfaceType::EMBER_ZCL_INTERFACE_TYPE_WI_FI;
+    InterfaceTypeEnum ret = InterfaceTypeEnum::kWiFi;
     return ret;
 }
 
