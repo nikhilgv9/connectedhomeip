@@ -2577,6 +2577,56 @@ cluster ColorControl = 768 {
   command StepColorTemperature(StepColorTemperatureRequest): DefaultSuccess = 76;
 }
 
+/** This cluster provides */
+cluster Doll = 0x6006FC00 {
+  revision 1; // NOTE: Default/not specifically set
+
+  attribute optional boolean leftEyeStatusOfTheDoll = 0x60060000;
+  attribute optional boolean rightEyeStatusOfTheDoll = 0x60060001;
+  readonly attribute char_string<1000> description = 0x6006A000;
+  readonly attribute command_id generatedCommandList[] = 65528;
+  readonly attribute command_id acceptedCommandList[] = 65529;
+  readonly attribute event_id eventList[] = 65530;
+  readonly attribute attrib_id attributeList[] = 65531;
+  readonly attribute bitmap32 featureMap = 65532;
+  readonly attribute int16u clusterRevision = 65533;
+
+  request struct BlinkRequest {
+    INT8U eye = 0;
+    INT8U times = 1;
+  }
+
+  /** Blink the specified eye of the doll for the specified number of times */
+  command Blink(BlinkRequest): DefaultSuccess = 0;
+  /** Make the doll smile */
+  command Smile(): DefaultSuccess = 1;
+}
+
+/** This cluster provides */
+cluster Doll = 0x6006FC00 {
+  revision 1; // NOTE: Default/not specifically set
+
+  attribute optional boolean leftEyeStatusOfTheDoll = 0x60060000;
+  attribute optional boolean rightEyeStatusOfTheDoll = 0x60060001;
+  readonly attribute char_string<1000> description = 0x6006A000;
+  readonly attribute command_id generatedCommandList[] = 65528;
+  readonly attribute command_id acceptedCommandList[] = 65529;
+  readonly attribute event_id eventList[] = 65530;
+  readonly attribute attrib_id attributeList[] = 65531;
+  readonly attribute bitmap32 featureMap = 65532;
+  readonly attribute int16u clusterRevision = 65533;
+
+  request struct BlinkRequest {
+    INT8U eye = 0;
+    INT8U times = 1;
+  }
+
+  /** Blink the specified eye of the doll for the specified number of times */
+  command Blink(BlinkRequest): DefaultSuccess = 0;
+  /** Make the doll smile */
+  command Smile(): DefaultSuccess = 1;
+}
+
 endpoint 0 {
   device type ma_rootdevice = 22, version 1;
 
@@ -2911,6 +2961,7 @@ endpoint 0 {
 endpoint 1 {
   device type ma_dimmablelight = 257, version 1;
 
+  binding cluster Doll;
 
   server cluster Identify {
     ram      attribute identifyTime default = 0x0000;
@@ -3063,6 +3114,20 @@ endpoint 1 {
     handle command StopMoveStep;
     handle command MoveColorTemperature;
     handle command StepColorTemperature;
+  }
+
+  server cluster Doll {
+    ram      attribute leftEyeStatusOfTheDoll default = 0x00;
+    ram      attribute rightEyeStatusOfTheDoll default = 0x00;
+    ram      attribute description default = "Hello";
+    callback attribute generatedCommandList;
+    callback attribute acceptedCommandList;
+    callback attribute attributeList;
+    ram      attribute featureMap default = 0;
+    ram      attribute clusterRevision default = 1;
+
+    handle command Blink;
+    handle command Smile;
   }
 }
 

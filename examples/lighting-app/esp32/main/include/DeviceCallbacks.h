@@ -21,12 +21,17 @@
 #include <common/CHIPDeviceManager.h>
 #include <common/CommonDeviceCallbacks.h>
 #include <platform/CHIPDeviceLayer.h>
+#include "Display.h"
+
+extern Display display;
 
 class AppDeviceCallbacks : public CommonDeviceCallbacks
 {
 public:
     virtual void PostAttributeChangeCallback(chip::EndpointId endpointId, chip::ClusterId clusterId, chip::AttributeId attributeId,
                                              uint8_t type, uint16_t size, uint8_t * value);
+
+//    virtual void DeviceEventCallback(const chip::DeviceLayer::ChipDeviceEvent * event, intptr_t arg);
 
 private:
     void OnIdentifyPostAttributeChangeCallback(chip::EndpointId endpointId, chip::AttributeId attributeId, uint8_t * value);

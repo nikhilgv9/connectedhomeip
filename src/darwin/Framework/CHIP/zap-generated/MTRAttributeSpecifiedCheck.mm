@@ -5882,6 +5882,39 @@ static BOOL AttributeIsSpecifiedInCommissionerControlCluster(AttributeId aAttrib
     }
     }
 }
+static BOOL AttributeIsSpecifiedInDollCluster(AttributeId aAttributeId)
+{
+    using namespace Clusters::Doll;
+    switch (aAttributeId) {
+    case Attributes::LeftEyeStatusOfTheDoll::Id: {
+        return YES;
+    }
+    case Attributes::RightEyeStatusOfTheDoll::Id: {
+        return YES;
+    }
+    case Attributes::Description::Id: {
+        return YES;
+    }
+    case Attributes::GeneratedCommandList::Id: {
+        return YES;
+    }
+    case Attributes::AcceptedCommandList::Id: {
+        return YES;
+    }
+    case Attributes::AttributeList::Id: {
+        return YES;
+    }
+    case Attributes::FeatureMap::Id: {
+        return YES;
+    }
+    case Attributes::ClusterRevision::Id: {
+        return YES;
+    }
+    default: {
+        return NO;
+    }
+    }
+}
 static BOOL AttributeIsSpecifiedInUnitTestingCluster(AttributeId aAttributeId)
 {
     using namespace Clusters::UnitTesting;
@@ -6566,6 +6599,9 @@ BOOL MTRAttributeIsSpecified(ClusterId aClusterId, AttributeId aAttributeId)
     }
     case Clusters::CommissionerControl::Id: {
         return AttributeIsSpecifiedInCommissionerControlCluster(aAttributeId);
+    }
+    case Clusters::Doll::Id: {
+        return AttributeIsSpecifiedInDollCluster(aAttributeId);
     }
     case Clusters::UnitTesting::Id: {
         return AttributeIsSpecifiedInUnitTestingCluster(aAttributeId);

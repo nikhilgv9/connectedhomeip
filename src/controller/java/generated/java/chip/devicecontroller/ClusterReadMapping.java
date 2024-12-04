@@ -19199,6 +19199,109 @@ public class ClusterReadMapping {
      
        return result;
     }
+    private static Map<String, InteractionInfo> readDollInteractionInfo() {
+       Map<String, InteractionInfo> result = new LinkedHashMap<>();Map<String, CommandParameterInfo> readDollLeftEyeStatusOfTheDollCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+        InteractionInfo readDollLeftEyeStatusOfTheDollAttributeInteractionInfo = new InteractionInfo(
+          (cluster, callback, commandArguments) -> {
+            ((ChipClusters.DollCluster) cluster).readLeftEyeStatusOfTheDollAttribute(
+              (ChipClusters.BooleanAttributeCallback) callback
+            );
+          },
+          () -> new ClusterInfoMapping.DelegatedBooleanAttributeCallback(),
+          readDollLeftEyeStatusOfTheDollCommandParams
+        );
+        result.put("readLeftEyeStatusOfTheDollAttribute", readDollLeftEyeStatusOfTheDollAttributeInteractionInfo);
+     Map<String, CommandParameterInfo> readDollRightEyeStatusOfTheDollCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+        InteractionInfo readDollRightEyeStatusOfTheDollAttributeInteractionInfo = new InteractionInfo(
+          (cluster, callback, commandArguments) -> {
+            ((ChipClusters.DollCluster) cluster).readRightEyeStatusOfTheDollAttribute(
+              (ChipClusters.BooleanAttributeCallback) callback
+            );
+          },
+          () -> new ClusterInfoMapping.DelegatedBooleanAttributeCallback(),
+          readDollRightEyeStatusOfTheDollCommandParams
+        );
+        result.put("readRightEyeStatusOfTheDollAttribute", readDollRightEyeStatusOfTheDollAttributeInteractionInfo);
+     Map<String, CommandParameterInfo> readDollDescriptionCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+        InteractionInfo readDollDescriptionAttributeInteractionInfo = new InteractionInfo(
+          (cluster, callback, commandArguments) -> {
+            ((ChipClusters.DollCluster) cluster).readDescriptionAttribute(
+              (ChipClusters.CharStringAttributeCallback) callback
+            );
+          },
+          () -> new ClusterInfoMapping.DelegatedCharStringAttributeCallback(),
+          readDollDescriptionCommandParams
+        );
+        result.put("readDescriptionAttribute", readDollDescriptionAttributeInteractionInfo);
+     Map<String, CommandParameterInfo> readDollGeneratedCommandListCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+        InteractionInfo readDollGeneratedCommandListAttributeInteractionInfo = new InteractionInfo(
+          (cluster, callback, commandArguments) -> {
+            ((ChipClusters.DollCluster) cluster).readGeneratedCommandListAttribute(
+              (ChipClusters.DollCluster.GeneratedCommandListAttributeCallback) callback
+            );
+          },
+          () -> new ClusterInfoMapping.DelegatedDollClusterGeneratedCommandListAttributeCallback(),
+          readDollGeneratedCommandListCommandParams
+        );
+        result.put("readGeneratedCommandListAttribute", readDollGeneratedCommandListAttributeInteractionInfo);
+     Map<String, CommandParameterInfo> readDollAcceptedCommandListCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+        InteractionInfo readDollAcceptedCommandListAttributeInteractionInfo = new InteractionInfo(
+          (cluster, callback, commandArguments) -> {
+            ((ChipClusters.DollCluster) cluster).readAcceptedCommandListAttribute(
+              (ChipClusters.DollCluster.AcceptedCommandListAttributeCallback) callback
+            );
+          },
+          () -> new ClusterInfoMapping.DelegatedDollClusterAcceptedCommandListAttributeCallback(),
+          readDollAcceptedCommandListCommandParams
+        );
+        result.put("readAcceptedCommandListAttribute", readDollAcceptedCommandListAttributeInteractionInfo);
+     Map<String, CommandParameterInfo> readDollEventListCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+        InteractionInfo readDollEventListAttributeInteractionInfo = new InteractionInfo(
+          (cluster, callback, commandArguments) -> {
+            ((ChipClusters.DollCluster) cluster).readEventListAttribute(
+              (ChipClusters.DollCluster.EventListAttributeCallback) callback
+            );
+          },
+          () -> new ClusterInfoMapping.DelegatedDollClusterEventListAttributeCallback(),
+          readDollEventListCommandParams
+        );
+        result.put("readEventListAttribute", readDollEventListAttributeInteractionInfo);
+     Map<String, CommandParameterInfo> readDollAttributeListCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+        InteractionInfo readDollAttributeListAttributeInteractionInfo = new InteractionInfo(
+          (cluster, callback, commandArguments) -> {
+            ((ChipClusters.DollCluster) cluster).readAttributeListAttribute(
+              (ChipClusters.DollCluster.AttributeListAttributeCallback) callback
+            );
+          },
+          () -> new ClusterInfoMapping.DelegatedDollClusterAttributeListAttributeCallback(),
+          readDollAttributeListCommandParams
+        );
+        result.put("readAttributeListAttribute", readDollAttributeListAttributeInteractionInfo);
+     Map<String, CommandParameterInfo> readDollFeatureMapCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+        InteractionInfo readDollFeatureMapAttributeInteractionInfo = new InteractionInfo(
+          (cluster, callback, commandArguments) -> {
+            ((ChipClusters.DollCluster) cluster).readFeatureMapAttribute(
+              (ChipClusters.LongAttributeCallback) callback
+            );
+          },
+          () -> new ClusterInfoMapping.DelegatedLongAttributeCallback(),
+          readDollFeatureMapCommandParams
+        );
+        result.put("readFeatureMapAttribute", readDollFeatureMapAttributeInteractionInfo);
+     Map<String, CommandParameterInfo> readDollClusterRevisionCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+        InteractionInfo readDollClusterRevisionAttributeInteractionInfo = new InteractionInfo(
+          (cluster, callback, commandArguments) -> {
+            ((ChipClusters.DollCluster) cluster).readClusterRevisionAttribute(
+              (ChipClusters.IntegerAttributeCallback) callback
+            );
+          },
+          () -> new ClusterInfoMapping.DelegatedIntegerAttributeCallback(),
+          readDollClusterRevisionCommandParams
+        );
+        result.put("readClusterRevisionAttribute", readDollClusterRevisionAttributeInteractionInfo);
+     
+       return result;
+    }
     private static Map<String, InteractionInfo> readUnitTestingInteractionInfo() {
        Map<String, InteractionInfo> result = new LinkedHashMap<>();Map<String, CommandParameterInfo> readUnitTestingBooleanCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
         InteractionInfo readUnitTestingBooleanAttributeInteractionInfo = new InteractionInfo(
@@ -20483,6 +20586,7 @@ public class ClusterReadMapping {
             put("chime", readChimeInteractionInfo());
             put("ecosystemInformation", readEcosystemInformationInteractionInfo());
             put("commissionerControl", readCommissionerControlInteractionInfo());
+            put("doll", readDollInteractionInfo());
             put("unitTesting", readUnitTestingInteractionInfo());
             put("faultInjection", readFaultInjectionInteractionInfo());
             put("sampleMei", readSampleMeiInteractionInfo());}};

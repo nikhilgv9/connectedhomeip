@@ -21071,6 +21071,90 @@ public class ClusterInfoMapping {
     }
   }
 
+  public static class DelegatedDollClusterGeneratedCommandListAttributeCallback implements ChipClusters.DollCluster.GeneratedCommandListAttributeCallback, DelegatedClusterCallback {
+    private ClusterCommandCallback callback;
+    @Override
+    public void setCallbackDelegate(ClusterCommandCallback callback) {
+      this.callback = callback;
+    }
+
+    @Override
+    public void onSuccess(List<Long> valueList) {
+      Map<CommandResponseInfo, Object> responseValues = new LinkedHashMap<>();
+      CommandResponseInfo commandResponseInfo = new CommandResponseInfo("valueList", "List<Long>");
+      responseValues.put(commandResponseInfo, valueList);
+      callback.onSuccess(responseValues);
+    }
+
+    @Override
+    public void onError(Exception ex) {
+      callback.onFailure(ex);
+    }
+  }
+
+  public static class DelegatedDollClusterAcceptedCommandListAttributeCallback implements ChipClusters.DollCluster.AcceptedCommandListAttributeCallback, DelegatedClusterCallback {
+    private ClusterCommandCallback callback;
+    @Override
+    public void setCallbackDelegate(ClusterCommandCallback callback) {
+      this.callback = callback;
+    }
+
+    @Override
+    public void onSuccess(List<Long> valueList) {
+      Map<CommandResponseInfo, Object> responseValues = new LinkedHashMap<>();
+      CommandResponseInfo commandResponseInfo = new CommandResponseInfo("valueList", "List<Long>");
+      responseValues.put(commandResponseInfo, valueList);
+      callback.onSuccess(responseValues);
+    }
+
+    @Override
+    public void onError(Exception ex) {
+      callback.onFailure(ex);
+    }
+  }
+
+  public static class DelegatedDollClusterEventListAttributeCallback implements ChipClusters.DollCluster.EventListAttributeCallback, DelegatedClusterCallback {
+    private ClusterCommandCallback callback;
+    @Override
+    public void setCallbackDelegate(ClusterCommandCallback callback) {
+      this.callback = callback;
+    }
+
+    @Override
+    public void onSuccess(List<Long> valueList) {
+      Map<CommandResponseInfo, Object> responseValues = new LinkedHashMap<>();
+      CommandResponseInfo commandResponseInfo = new CommandResponseInfo("valueList", "List<Long>");
+      responseValues.put(commandResponseInfo, valueList);
+      callback.onSuccess(responseValues);
+    }
+
+    @Override
+    public void onError(Exception ex) {
+      callback.onFailure(ex);
+    }
+  }
+
+  public static class DelegatedDollClusterAttributeListAttributeCallback implements ChipClusters.DollCluster.AttributeListAttributeCallback, DelegatedClusterCallback {
+    private ClusterCommandCallback callback;
+    @Override
+    public void setCallbackDelegate(ClusterCommandCallback callback) {
+      this.callback = callback;
+    }
+
+    @Override
+    public void onSuccess(List<Long> valueList) {
+      Map<CommandResponseInfo, Object> responseValues = new LinkedHashMap<>();
+      CommandResponseInfo commandResponseInfo = new CommandResponseInfo("valueList", "List<Long>");
+      responseValues.put(commandResponseInfo, valueList);
+      callback.onSuccess(responseValues);
+    }
+
+    @Override
+    public void onError(Exception ex) {
+      callback.onFailure(ex);
+    }
+  }
+
 
   public static class DelegatedUnitTestingClusterTestSpecificResponseCallback implements ChipClusters.UnitTestingCluster.TestSpecificResponseCallback, DelegatedClusterCallback {
     private ClusterCommandCallback callback;
@@ -23195,6 +23279,10 @@ public class ClusterInfoMapping {
       (ptr, endpointId) -> new ChipClusters.CommissionerControlCluster(ptr, endpointId), new HashMap<>());
     clusterMap.put("commissionerControl", commissionerControlClusterInfo);
 
+    ClusterInfo dollClusterInfo = new ClusterInfo(
+      (ptr, endpointId) -> new ChipClusters.DollCluster(ptr, endpointId), new HashMap<>());
+    clusterMap.put("doll", dollClusterInfo);
+
     ClusterInfo unitTestingClusterInfo = new ClusterInfo(
       (ptr, endpointId) -> new ChipClusters.UnitTestingCluster(ptr, endpointId), new HashMap<>());
     clusterMap.put("unitTesting", unitTestingClusterInfo);
@@ -23335,6 +23423,7 @@ public class ClusterInfoMapping {
     destination.get("chime").combineCommands(source.get("chime"));
     destination.get("ecosystemInformation").combineCommands(source.get("ecosystemInformation"));
     destination.get("commissionerControl").combineCommands(source.get("commissionerControl"));
+    destination.get("doll").combineCommands(source.get("doll"));
     destination.get("unitTesting").combineCommands(source.get("unitTesting"));
     destination.get("faultInjection").combineCommands(source.get("faultInjection"));
     destination.get("sampleMei").combineCommands(source.get("sampleMei"));
@@ -30213,6 +30302,44 @@ public class ClusterInfoMapping {
     commissionerControlClusterInteractionInfoMap.put("commissionNode", commissionerControlcommissionNodeInteractionInfo);
 
     commandMap.put("commissionerControl", commissionerControlClusterInteractionInfoMap);
+
+    Map<String, InteractionInfo> dollClusterInteractionInfoMap = new LinkedHashMap<>();
+
+    Map<String, CommandParameterInfo> dollblinkCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+
+    CommandParameterInfo dollblinkeyeCommandParameterInfo = new CommandParameterInfo("eye", Integer.class, Integer.class);
+    dollblinkCommandParams.put("eye",dollblinkeyeCommandParameterInfo);
+
+    CommandParameterInfo dollblinktimesCommandParameterInfo = new CommandParameterInfo("times", Integer.class, Integer.class);
+    dollblinkCommandParams.put("times",dollblinktimesCommandParameterInfo);
+    InteractionInfo dollblinkInteractionInfo = new InteractionInfo(
+      (cluster, callback, commandArguments) -> {
+        ((ChipClusters.DollCluster) cluster)
+        .blink((DefaultClusterCallback) callback
+        , (Integer)
+        commandArguments.get("eye")
+        , (Integer)
+        commandArguments.get("times")
+        );
+      },
+      () -> new DelegatedDefaultClusterCallback(),
+        dollblinkCommandParams
+    );
+    dollClusterInteractionInfoMap.put("blink", dollblinkInteractionInfo);
+
+    Map<String, CommandParameterInfo> dollsmileCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+    InteractionInfo dollsmileInteractionInfo = new InteractionInfo(
+      (cluster, callback, commandArguments) -> {
+        ((ChipClusters.DollCluster) cluster)
+        .smile((DefaultClusterCallback) callback
+        );
+      },
+      () -> new DelegatedDefaultClusterCallback(),
+        dollsmileCommandParams
+    );
+    dollClusterInteractionInfoMap.put("smile", dollsmileInteractionInfo);
+
+    commandMap.put("doll", dollClusterInteractionInfoMap);
 
     Map<String, InteractionInfo> unitTestingClusterInteractionInfoMap = new LinkedHashMap<>();
 

@@ -5643,6 +5643,8 @@ enum class SupportedDeviceCategoryBitmap : uint32_t
 };
 } // namespace CommissionerControl
 
+namespace Doll {} // namespace Doll
+
 namespace UnitTesting {
 
 // Enum for SimpleEnum

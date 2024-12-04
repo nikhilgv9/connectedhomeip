@@ -3794,6 +3794,52 @@ public class ClusterWriteMapping {
     writeAttributeMap.put("ecosystemInformation", writeEcosystemInformationInteractionInfo);
     Map<String, InteractionInfo> writeCommissionerControlInteractionInfo = new LinkedHashMap<>();
     writeAttributeMap.put("commissionerControl", writeCommissionerControlInteractionInfo);
+    Map<String, InteractionInfo> writeDollInteractionInfo = new LinkedHashMap<>();
+    Map<String, CommandParameterInfo> writeDollLeftEyeStatusOfTheDollCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+    CommandParameterInfo dollleftEyeStatusOfTheDollCommandParameterInfo =
+        new CommandParameterInfo(
+            "value", 
+            Boolean.class, 
+            Boolean.class 
+        );
+    writeDollLeftEyeStatusOfTheDollCommandParams.put(
+        "value",
+        dollleftEyeStatusOfTheDollCommandParameterInfo
+    );
+    InteractionInfo writeDollLeftEyeStatusOfTheDollAttributeInteractionInfo = new InteractionInfo(
+      (cluster, callback, commandArguments) -> {
+        ((ChipClusters.DollCluster) cluster).writeLeftEyeStatusOfTheDollAttribute(
+          (DefaultClusterCallback) callback,
+          (Boolean) commandArguments.get("value")
+        );
+      },
+      () -> new ClusterInfoMapping.DelegatedDefaultClusterCallback(),
+      writeDollLeftEyeStatusOfTheDollCommandParams
+    );
+    writeDollInteractionInfo.put("writeLeftEyeStatusOfTheDollAttribute", writeDollLeftEyeStatusOfTheDollAttributeInteractionInfo);
+    Map<String, CommandParameterInfo> writeDollRightEyeStatusOfTheDollCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
+    CommandParameterInfo dollrightEyeStatusOfTheDollCommandParameterInfo =
+        new CommandParameterInfo(
+            "value", 
+            Boolean.class, 
+            Boolean.class 
+        );
+    writeDollRightEyeStatusOfTheDollCommandParams.put(
+        "value",
+        dollrightEyeStatusOfTheDollCommandParameterInfo
+    );
+    InteractionInfo writeDollRightEyeStatusOfTheDollAttributeInteractionInfo = new InteractionInfo(
+      (cluster, callback, commandArguments) -> {
+        ((ChipClusters.DollCluster) cluster).writeRightEyeStatusOfTheDollAttribute(
+          (DefaultClusterCallback) callback,
+          (Boolean) commandArguments.get("value")
+        );
+      },
+      () -> new ClusterInfoMapping.DelegatedDefaultClusterCallback(),
+      writeDollRightEyeStatusOfTheDollCommandParams
+    );
+    writeDollInteractionInfo.put("writeRightEyeStatusOfTheDollAttribute", writeDollRightEyeStatusOfTheDollAttributeInteractionInfo);
+    writeAttributeMap.put("doll", writeDollInteractionInfo);
     Map<String, InteractionInfo> writeUnitTestingInteractionInfo = new LinkedHashMap<>();
     Map<String, CommandParameterInfo> writeUnitTestingBooleanCommandParams = new LinkedHashMap<String, CommandParameterInfo>();
     CommandParameterInfo unitTestingbooleanCommandParameterInfo =

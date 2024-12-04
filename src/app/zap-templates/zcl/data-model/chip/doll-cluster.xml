@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<configurator>
+  <domain name="Ember"/>
+  <!-- Use manufacturerCode to indicate that this is a manufacturer specific
+       cluster. -->
+  <cluster manufacturerCode="0x6006">
+    <name>Doll</name>
+    <domain>Ember</domain>
+    <description>This cluster provides
+      </description>
+    <!-- Cluster Id must be within the mfg spec range 0xfc00 - 0xffff -->
+    <code>0xFC00</code>
+    <define>DOLL_CLUSTER</define>
+    <client init="false" tick="false">true</client>
+    <server init="false" tick="false">true</server>
+    <attribute side="server" code="0x0000" name="LeftEyeState" define="LEFT_EYE_STATUS" type="boolean"  writable="true" default="0x00" optional="true">Left eye status of the doll</attribute>
+    <attribute side="server" code="0x0001" name="RightEyeState" define="RIGHT_EYE_STATUS" type="boolean"  writable="true" default="0x00" optional="true">Right eye status of the doll</attribute>
+    <attribute side="server" code="0xA000" name="Description" define="MODE_DESCRIPTION" type="char_string" length="1000">
+      <mandatoryConform/>
+    </attribute>
+
+    <command source="client" code="0x00" name="Blink" optional="true">
+      <description>
+        Blink the specified eye of the doll for the specified number of times
+      </description>
+      <arg name="eye" type="INT8U"/>
+      <arg name="times" type="INT8U"/>
+    </command>
+
+    <command source="client" code="0x01" name="Smile" optional="true">
+      <description>
+        Make the doll smile
+      </description>
+    </command>
+  </cluster>
+</configurator>

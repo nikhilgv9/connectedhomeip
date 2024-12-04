@@ -204,6 +204,7 @@ typedef NS_ENUM(uint32_t, MTRClusterIDType) {
     MTRClusterIDTypeChimeID MTR_PROVISIONALLY_AVAILABLE = 0x00000556,
     MTRClusterIDTypeEcosystemInformationID MTR_PROVISIONALLY_AVAILABLE = 0x00000750,
     MTRClusterIDTypeCommissionerControlID MTR_PROVISIONALLY_AVAILABLE = 0x00000751,
+    MTRClusterIDTypeDollID MTR_PROVISIONALLY_AVAILABLE = 0x6006FC00,
     MTRClusterIDTypeUnitTestingID MTR_AVAILABLE(ios(16.4), macos(13.3), watchos(9.4), tvos(16.4)) = 0xFFF1FC05,
     MTRClusterIDTypeSampleMEIID MTR_PROVISIONALLY_AVAILABLE = 0xFFF1FC20,
 
@@ -4725,6 +4726,16 @@ typedef NS_ENUM(uint32_t, MTRAttributeIDType) {
     MTRAttributeIDTypeClusterCommissionerControlAttributeFeatureMapID MTR_PROVISIONALLY_AVAILABLE = MTRAttributeIDTypeGlobalAttributeFeatureMapID,
     MTRAttributeIDTypeClusterCommissionerControlAttributeClusterRevisionID MTR_PROVISIONALLY_AVAILABLE = MTRAttributeIDTypeGlobalAttributeClusterRevisionID,
 
+    // Cluster Doll attributes
+    MTRAttributeIDTypeClusterDollAttributeLeftEyeStatusOfTheDollID MTR_PROVISIONALLY_AVAILABLE = 0x60060000,
+    MTRAttributeIDTypeClusterDollAttributeRightEyeStatusOfTheDollID MTR_PROVISIONALLY_AVAILABLE = 0x60060001,
+    MTRAttributeIDTypeClusterDollAttributeDescriptionID MTR_PROVISIONALLY_AVAILABLE = 0x6006A000,
+    MTRAttributeIDTypeClusterDollAttributeGeneratedCommandListID MTR_PROVISIONALLY_AVAILABLE = MTRAttributeIDTypeGlobalAttributeGeneratedCommandListID,
+    MTRAttributeIDTypeClusterDollAttributeAcceptedCommandListID MTR_PROVISIONALLY_AVAILABLE = MTRAttributeIDTypeGlobalAttributeAcceptedCommandListID,
+    MTRAttributeIDTypeClusterDollAttributeAttributeListID MTR_PROVISIONALLY_AVAILABLE = MTRAttributeIDTypeGlobalAttributeAttributeListID,
+    MTRAttributeIDTypeClusterDollAttributeFeatureMapID MTR_PROVISIONALLY_AVAILABLE = MTRAttributeIDTypeGlobalAttributeFeatureMapID,
+    MTRAttributeIDTypeClusterDollAttributeClusterRevisionID MTR_PROVISIONALLY_AVAILABLE = MTRAttributeIDTypeGlobalAttributeClusterRevisionID,
+
     // Cluster TestCluster deprecated attribute names
     MTRClusterTestClusterAttributeBooleanID
         MTR_DEPRECATED("Please use MTRAttributeIDTypeClusterUnitTestingAttributeBooleanID", ios(16.1, 16.4), macos(13.0, 13.3), watchos(9.1, 9.4), tvos(16.1, 16.4))
@@ -6942,6 +6953,10 @@ typedef NS_ENUM(uint32_t, MTRCommandIDType) {
     MTRCommandIDTypeClusterCommissionerControlCommandRequestCommissioningApprovalID MTR_PROVISIONALLY_AVAILABLE = 0x00000000,
     MTRCommandIDTypeClusterCommissionerControlCommandCommissionNodeID MTR_PROVISIONALLY_AVAILABLE = 0x00000001,
     MTRCommandIDTypeClusterCommissionerControlCommandReverseOpenCommissioningWindowID MTR_PROVISIONALLY_AVAILABLE = 0x00000002,
+
+    // Cluster Doll commands
+    MTRCommandIDTypeClusterDollCommandBlinkID MTR_PROVISIONALLY_AVAILABLE = 0x60060000,
+    MTRCommandIDTypeClusterDollCommandSmileID MTR_PROVISIONALLY_AVAILABLE = 0x60060001,
 
     // Cluster TestCluster deprecated command id names
     MTRClusterTestClusterCommandTestID

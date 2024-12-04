@@ -16,12 +16,13 @@
  */
 
 #include "DeviceCallbacks.h"
-
+#include "Display.h"
 #include "AppTask.h"
 #include "esp_log.h"
 #include <common/CHIPDeviceManager.h>
 #include <common/Esp32AppServer.h>
 #include <common/Esp32ThreadInit.h>
+//#include <M5Core2.h>
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include "spi_flash_mmap.h"
 #else
@@ -125,11 +126,24 @@ chip::Credentials::DeviceAttestationCredentialsProvider * get_dac_provider(void)
 
 } // namespace
 
+Display display;
+
 static void InitServer(intptr_t context)
 {
+    display.init_display();
+    display.display_sad_image();
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    display.display_image();
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    display.close_eye(2);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    display.open_eye(2);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    display.display_sad_image();
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    display.neutral_lip();
     // Print QR Code URL
     PrintOnboardingCodes(chip::RendezvousInformationFlags(CONFIG_RENDEZVOUS_MODE));
-
     DeviceCallbacksDelegate::Instance().SetAppDelegate(&sAppDeviceCallbacksDelegate);
     Esp32AppServer::Init(); // Init ZCL Data Model and CHIP App Server AND Initialize device attestation config
 

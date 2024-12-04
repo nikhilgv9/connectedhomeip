@@ -43763,6 +43763,179 @@ public:
 } // namespace CommissioningRequestResult
 } // namespace Events
 } // namespace CommissionerControl
+namespace Doll {
+
+namespace Commands {
+// Forward-declarations so we can reference these later.
+
+namespace Blink {
+struct Type;
+struct DecodableType;
+} // namespace Blink
+
+namespace Smile {
+struct Type;
+struct DecodableType;
+} // namespace Smile
+
+} // namespace Commands
+
+namespace Commands {
+namespace Blink {
+enum class Fields : uint8_t
+{
+    kEye   = 0,
+    kTimes = 1,
+};
+
+struct Type
+{
+public:
+    // Use GetCommandId instead of commandId directly to avoid naming conflict with CommandIdentification in ExecutionOfACommand
+    static constexpr CommandId GetCommandId() { return Commands::Blink::Id; }
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+
+    uint8_t eye   = static_cast<uint8_t>(0);
+    uint8_t times = static_cast<uint8_t>(0);
+
+    CHIP_ERROR Encode(TLV::TLVWriter & aWriter, TLV::Tag aTag) const;
+
+    using ResponseType = DataModel::NullObjectType;
+
+    static constexpr bool MustUseTimedInvoke() { return false; }
+};
+
+struct DecodableType
+{
+public:
+    static constexpr CommandId GetCommandId() { return Commands::Blink::Id; }
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+
+    uint8_t eye   = static_cast<uint8_t>(0);
+    uint8_t times = static_cast<uint8_t>(0);
+    CHIP_ERROR Decode(TLV::TLVReader & reader);
+};
+}; // namespace Blink
+namespace Smile {
+enum class Fields : uint8_t
+{
+};
+
+struct Type
+{
+public:
+    // Use GetCommandId instead of commandId directly to avoid naming conflict with CommandIdentification in ExecutionOfACommand
+    static constexpr CommandId GetCommandId() { return Commands::Smile::Id; }
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+
+    CHIP_ERROR Encode(TLV::TLVWriter & aWriter, TLV::Tag aTag) const;
+
+    using ResponseType = DataModel::NullObjectType;
+
+    static constexpr bool MustUseTimedInvoke() { return false; }
+};
+
+struct DecodableType
+{
+public:
+    static constexpr CommandId GetCommandId() { return Commands::Smile::Id; }
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+
+    CHIP_ERROR Decode(TLV::TLVReader & reader);
+};
+}; // namespace Smile
+} // namespace Commands
+
+namespace Attributes {
+
+namespace LeftEyeStatusOfTheDoll {
+struct TypeInfo
+{
+    using Type             = bool;
+    using DecodableType    = bool;
+    using DecodableArgType = bool;
+
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+    static constexpr AttributeId GetAttributeId() { return Attributes::LeftEyeStatusOfTheDoll::Id; }
+    static constexpr bool MustUseTimedWrite() { return false; }
+};
+} // namespace LeftEyeStatusOfTheDoll
+namespace RightEyeStatusOfTheDoll {
+struct TypeInfo
+{
+    using Type             = bool;
+    using DecodableType    = bool;
+    using DecodableArgType = bool;
+
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+    static constexpr AttributeId GetAttributeId() { return Attributes::RightEyeStatusOfTheDoll::Id; }
+    static constexpr bool MustUseTimedWrite() { return false; }
+};
+} // namespace RightEyeStatusOfTheDoll
+namespace Description {
+struct TypeInfo
+{
+    using Type             = chip::CharSpan;
+    using DecodableType    = chip::CharSpan;
+    using DecodableArgType = chip::CharSpan;
+
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+    static constexpr AttributeId GetAttributeId() { return Attributes::Description::Id; }
+    static constexpr bool MustUseTimedWrite() { return false; }
+    static constexpr size_t MaxLength() { return 1000; }
+};
+} // namespace Description
+namespace GeneratedCommandList {
+struct TypeInfo : public Clusters::Globals::Attributes::GeneratedCommandList::TypeInfo
+{
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+};
+} // namespace GeneratedCommandList
+namespace AcceptedCommandList {
+struct TypeInfo : public Clusters::Globals::Attributes::AcceptedCommandList::TypeInfo
+{
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+};
+} // namespace AcceptedCommandList
+namespace AttributeList {
+struct TypeInfo : public Clusters::Globals::Attributes::AttributeList::TypeInfo
+{
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+};
+} // namespace AttributeList
+namespace FeatureMap {
+struct TypeInfo : public Clusters::Globals::Attributes::FeatureMap::TypeInfo
+{
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+};
+} // namespace FeatureMap
+namespace ClusterRevision {
+struct TypeInfo : public Clusters::Globals::Attributes::ClusterRevision::TypeInfo
+{
+    static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+};
+} // namespace ClusterRevision
+
+struct TypeInfo
+{
+    struct DecodableType
+    {
+        static constexpr ClusterId GetClusterId() { return Clusters::Doll::Id; }
+
+        CHIP_ERROR Decode(TLV::TLVReader & reader, const ConcreteAttributePath & path);
+
+        Attributes::LeftEyeStatusOfTheDoll::TypeInfo::DecodableType leftEyeStatusOfTheDoll   = static_cast<bool>(0);
+        Attributes::RightEyeStatusOfTheDoll::TypeInfo::DecodableType rightEyeStatusOfTheDoll = static_cast<bool>(0);
+        Attributes::Description::TypeInfo::DecodableType description;
+        Attributes::GeneratedCommandList::TypeInfo::DecodableType generatedCommandList;
+        Attributes::AcceptedCommandList::TypeInfo::DecodableType acceptedCommandList;
+        Attributes::AttributeList::TypeInfo::DecodableType attributeList;
+        Attributes::FeatureMap::TypeInfo::DecodableType featureMap           = static_cast<uint32_t>(0);
+        Attributes::ClusterRevision::TypeInfo::DecodableType clusterRevision = static_cast<uint16_t>(0);
+    };
+};
+} // namespace Attributes
+} // namespace Doll
 namespace UnitTesting {
 namespace Structs {
 namespace SimpleStruct {

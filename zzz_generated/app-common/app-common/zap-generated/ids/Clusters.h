@@ -397,6 +397,9 @@ static constexpr ClusterId Id = 0x00000750;
 namespace CommissionerControl {
 static constexpr ClusterId Id = 0x00000751;
 } // namespace CommissionerControl
+namespace Doll {
+static constexpr ClusterId Id = 0x6006FC00;
+} // namespace Doll
 namespace UnitTesting {
 static constexpr ClusterId Id = 0xFFF1FC05;
 } // namespace UnitTesting

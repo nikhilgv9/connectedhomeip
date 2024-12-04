@@ -273,6 +273,8 @@ char const * ClusterIdToText(chip::ClusterId id)
         return "EcosystemInformation";
     case chip::app::Clusters::CommissionerControl::Id:
         return "CommissionerControl";
+    case chip::app::Clusters::Doll::Id:
+        return "Doll";
     case chip::app::Clusters::UnitTesting::Id:
         return "UnitTesting";
     case chip::app::Clusters::FaultInjection::Id:
@@ -4366,6 +4368,29 @@ char const * AttributeIdToText(chip::ClusterId cluster, chip::AttributeId id)
             return "Unknown";
         }
     }
+    case chip::app::Clusters::Doll::Id: {
+        switch (id)
+        {
+        case chip::app::Clusters::Doll::Attributes::LeftEyeStatusOfTheDoll::Id:
+            return "LeftEyeStatusOfTheDoll";
+        case chip::app::Clusters::Doll::Attributes::RightEyeStatusOfTheDoll::Id:
+            return "RightEyeStatusOfTheDoll";
+        case chip::app::Clusters::Doll::Attributes::Description::Id:
+            return "Description";
+        case chip::app::Clusters::Doll::Attributes::GeneratedCommandList::Id:
+            return "GeneratedCommandList";
+        case chip::app::Clusters::Doll::Attributes::AcceptedCommandList::Id:
+            return "AcceptedCommandList";
+        case chip::app::Clusters::Doll::Attributes::AttributeList::Id:
+            return "AttributeList";
+        case chip::app::Clusters::Doll::Attributes::FeatureMap::Id:
+            return "FeatureMap";
+        case chip::app::Clusters::Doll::Attributes::ClusterRevision::Id:
+            return "ClusterRevision";
+        default:
+            return "Unknown";
+        }
+    }
     case chip::app::Clusters::UnitTesting::Id: {
         switch (id)
         {
@@ -5730,6 +5755,17 @@ char const * AcceptedCommandIdToText(chip::ClusterId cluster, chip::CommandId id
             return "RequestCommissioningApproval";
         case chip::app::Clusters::CommissionerControl::Commands::CommissionNode::Id:
             return "CommissionNode";
+        default:
+            return "Unknown";
+        }
+    }
+    case chip::app::Clusters::Doll::Id: {
+        switch (id)
+        {
+        case chip::app::Clusters::Doll::Commands::Blink::Id:
+            return "Blink";
+        case chip::app::Clusters::Doll::Commands::Smile::Id:
+            return "Smile";
         default:
             return "Unknown";
         }

@@ -182,6 +182,7 @@
         "DEVICE_ENERGY_MANAGEMENT_CLUSTER": ["device-energy-management-server"],
         "DEVICE_ENERGY_MANAGEMENT_MODE_CLUSTER": ["mode-base-server"],
         "DEVICE_TEMP_CLUSTER": [],
+        "DOLL_CLUSTER": [],
         "DIAGNOSTIC_LOGS_CLUSTER": ["diagnostic-logs-server"],
         "DISHWASHER_ALARM_CLUSTER": ["dishwasher-alarm-server"],
         "DISHWASHER_MODE_CLUSTER": ["mode-base-server"],

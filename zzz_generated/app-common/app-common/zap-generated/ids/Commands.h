@@ -1975,6 +1975,20 @@ static constexpr CommandId Id = 0x00000002;
 } // namespace Commands
 } // namespace CommissionerControl
 
+namespace Doll {
+namespace Commands {
+
+namespace Blink {
+static constexpr CommandId Id = 0x60060000;
+} // namespace Blink
+
+namespace Smile {
+static constexpr CommandId Id = 0x60060001;
+} // namespace Smile
+
+} // namespace Commands
+} // namespace Doll
+
 namespace UnitTesting {
 namespace Commands {
 

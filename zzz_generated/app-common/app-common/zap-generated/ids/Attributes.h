@@ -7215,6 +7215,44 @@ static constexpr AttributeId Id = Globals::Attributes::ClusterRevision::Id;
 } // namespace Attributes
 } // namespace CommissionerControl
 
+namespace Doll {
+namespace Attributes {
+
+namespace LeftEyeStatusOfTheDoll {
+static constexpr AttributeId Id = 0x60060000;
+} // namespace LeftEyeStatusOfTheDoll
+
+namespace RightEyeStatusOfTheDoll {
+static constexpr AttributeId Id = 0x60060001;
+} // namespace RightEyeStatusOfTheDoll
+
+namespace Description {
+static constexpr AttributeId Id = 0x6006A000;
+} // namespace Description
+
+namespace GeneratedCommandList {
+static constexpr AttributeId Id = Globals::Attributes::GeneratedCommandList::Id;
+} // namespace GeneratedCommandList
+
+namespace AcceptedCommandList {
+static constexpr AttributeId Id = Globals::Attributes::AcceptedCommandList::Id;
+} // namespace AcceptedCommandList
+
+namespace AttributeList {
+static constexpr AttributeId Id = Globals::Attributes::AttributeList::Id;
+} // namespace AttributeList
+
+namespace FeatureMap {
+static constexpr AttributeId Id = Globals::Attributes::FeatureMap::Id;
+} // namespace FeatureMap
+
+namespace ClusterRevision {
+static constexpr AttributeId Id = Globals::Attributes::ClusterRevision::Id;
+} // namespace ClusterRevision
+
+} // namespace Attributes
+} // namespace Doll
+
 namespace UnitTesting {
 namespace Attributes {
 

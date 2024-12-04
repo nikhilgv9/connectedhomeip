@@ -13122,6 +13122,78 @@ class ChipClusters:
             },
         },
     }
+    _DOLL_CLUSTER_INFO = {
+        "clusterName": "Doll",
+        "clusterId": 0x6006FC00,
+        "commands": {
+            0x60060000: {
+                "commandId": 0x60060000,
+                "commandName": "Blink",
+                "args": {
+                    "eye": "int",
+                    "times": "int",
+                },
+            },
+            0x60060001: {
+                "commandId": 0x60060001,
+                "commandName": "Smile",
+                "args": {
+                },
+            },
+        },
+        "attributes": {
+            0x60060000: {
+                "attributeName": "LeftEyeStatusOfTheDoll",
+                "attributeId": 0x60060000,
+                "type": "bool",
+                "reportable": True,
+                "writable": True,
+            },
+            0x60060001: {
+                "attributeName": "RightEyeStatusOfTheDoll",
+                "attributeId": 0x60060001,
+                "type": "bool",
+                "reportable": True,
+                "writable": True,
+            },
+            0x6006A000: {
+                "attributeName": "Description",
+                "attributeId": 0x6006A000,
+                "type": "str",
+                "reportable": True,
+            },
+            0x0000FFF8: {
+                "attributeName": "GeneratedCommandList",
+                "attributeId": 0x0000FFF8,
+                "type": "int",
+                "reportable": True,
+            },
+            0x0000FFF9: {
+                "attributeName": "AcceptedCommandList",
+                "attributeId": 0x0000FFF9,
+                "type": "int",
+                "reportable": True,
+            },
+            0x0000FFFB: {
+                "attributeName": "AttributeList",
+                "attributeId": 0x0000FFFB,
+                "type": "int",
+                "reportable": True,
+            },
+            0x0000FFFC: {
+                "attributeName": "FeatureMap",
+                "attributeId": 0x0000FFFC,
+                "type": "int",
+                "reportable": True,
+            },
+            0x0000FFFD: {
+                "attributeName": "ClusterRevision",
+                "attributeId": 0x0000FFFD,
+                "type": "int",
+                "reportable": True,
+            },
+        },
+    }
     _UNIT_TESTING_CLUSTER_INFO = {
         "clusterName": "UnitTesting",
         "clusterId": 0xFFF1FC05,
@@ -14235,6 +14307,7 @@ class ChipClusters:
         0x00000556: _CHIME_CLUSTER_INFO,
         0x00000750: _ECOSYSTEM_INFORMATION_CLUSTER_INFO,
         0x00000751: _COMMISSIONER_CONTROL_CLUSTER_INFO,
+        0x6006FC00: _DOLL_CLUSTER_INFO,
         0xFFF1FC05: _UNIT_TESTING_CLUSTER_INFO,
         0xFFF1FC06: _FAULT_INJECTION_CLUSTER_INFO,
         0xFFF1FC20: _SAMPLE_MEI_CLUSTER_INFO,
@@ -14365,6 +14438,7 @@ class ChipClusters:
         "Chime": _CHIME_CLUSTER_INFO,
         "EcosystemInformation": _ECOSYSTEM_INFORMATION_CLUSTER_INFO,
         "CommissionerControl": _COMMISSIONER_CONTROL_CLUSTER_INFO,
+        "Doll": _DOLL_CLUSTER_INFO,
         "UnitTesting": _UNIT_TESTING_CLUSTER_INFO,
         "FaultInjection": _FAULT_INJECTION_CLUSTER_INFO,
         "SampleMei": _SAMPLE_MEI_CLUSTER_INFO,

@@ -136,7 +136,8 @@
         "types/door-lock.xml",
         "types/occupancy-sensing.xml",
         "types/thermostat-user-interface-configuration.xml",
-        "zone-management-cluster.xml"
+        "zone-management-cluster.xml",
+        "doll-cluster.xml"
     ],
     "manufacturersXml": "../../../../src/app/zap-templates/zcl/data-model/manufacturers.xml",
     "options": {

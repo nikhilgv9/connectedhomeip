@@ -28,6 +28,8 @@
 #include <app-common/zap-generated/ids/Clusters.h>
 #include <app/ConcreteAttributePath.h>
 #include <lib/support/logging/CHIPLogging.h>
+#include <app/CommandHandler.h>
+#include <app/ConcreteCommandPath.h>
 
 static const char TAG[] = "light-app-callbacks";
 
@@ -67,6 +69,7 @@ void AppDeviceCallbacks::PostAttributeChangeCallback(EndpointId endpointId, Clus
 
     ESP_LOGI(TAG, "Current free heap: %u\n", static_cast<unsigned int>(heap_caps_get_free_size(MALLOC_CAP_8BIT)));
 }
+
 
 void AppDeviceCallbacks::OnOnOffPostAttributeChangeCallback(EndpointId endpointId, AttributeId attributeId, uint8_t * value)
 {
@@ -139,6 +142,46 @@ void emberAfOnOffClusterInitCallback(EndpointId endpoint)
 {
     ESP_LOGI(TAG, "emberAfOnOffClusterInitCallback");
     GetAppTask().UpdateClusterState();
+}
+
+void MatterDollPluginServerInitCallback() {
+
+}
+
+bool emberAfDollClusterSmileCallback(chip::app::CommandHandler* commandObj,
+                                     const chip::app::ConcreteCommandPath & commandPath,
+                                                   const chip::app::Clusters::Doll::Commands::Smile::DecodableType & commandData)
+{
+  display.smile_lip();
+  vTaskDelay(3000 / portTICK_PERIOD_MS);
+  display.neutral_lip();
+  vTaskDelay(3000 / portTICK_PERIOD_MS);
+  commandObj->AddStatus(commandPath, chip::Protocols::InteractionModel::Status::Success);
+  return true;
+}
+
+bool emberAfDollClusterBlinkCallback(chip::app::CommandHandler * commandObj,
+                                        const chip::app::ConcreteCommandPath & commandPath,
+                                        const chip::app::Clusters::Doll::Commands::Blink::DecodableType & commandData) {
+
+  for(int i = 0; i < commandData.times; i++) {
+    display.close_eye(commandData.eye);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    display.open_eye(commandData.eye);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+
+  commandObj->AddStatus(commandPath, chip::Protocols::InteractionModel::Status::Success);
+  return true;
+}
+
+void emberDollClusterInitCallback(EndpointId endpointId) {
+    ESP_LOGI(TAG, "emberDollClusterInitCallback");
+     GetAppTask().UpdateClusterState();
+}
+
+void MatterSampleMfgSpecificClusterPluginServerInitCallback() {
+
 }
 
 void AppDeviceCallbacksDelegate::OnIPv4ConnectivityEstablished()

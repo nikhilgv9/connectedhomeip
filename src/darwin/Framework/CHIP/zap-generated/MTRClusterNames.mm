@@ -390,6 +390,9 @@ NSString * MTRClusterNameForID(MTRClusterIDType clusterID)
     case MTRClusterIDTypeCommissionerControlID:
         result = @"CommissionerControl";
         break;
+    case MTRClusterIDTypeDollID:
+        result = @"Doll";
+        break;
     case MTRClusterIDTypeUnitTestingID:
         result = @"UnitTesting";
         break;
@@ -8104,6 +8107,49 @@ NSString * MTRAttributeNameForID(MTRClusterIDType clusterID, MTRAttributeIDType 
         }
         break;
 
+    case MTRClusterIDTypeDollID:
+
+        switch (attributeID) {
+
+            // Cluster Doll attributes
+        case MTRAttributeIDTypeClusterDollAttributeLeftEyeStatusOfTheDollID:
+            result = @"LeftEyeStatusOfTheDoll";
+            break;
+
+        case MTRAttributeIDTypeClusterDollAttributeRightEyeStatusOfTheDollID:
+            result = @"RightEyeStatusOfTheDoll";
+            break;
+
+        case MTRAttributeIDTypeClusterDollAttributeDescriptionID:
+            result = @"Description";
+            break;
+
+        case MTRAttributeIDTypeClusterDollAttributeGeneratedCommandListID:
+            result = @"GeneratedCommandList";
+            break;
+
+        case MTRAttributeIDTypeClusterDollAttributeAcceptedCommandListID:
+            result = @"AcceptedCommandList";
+            break;
+
+        case MTRAttributeIDTypeClusterDollAttributeAttributeListID:
+            result = @"AttributeList";
+            break;
+
+        case MTRAttributeIDTypeClusterDollAttributeFeatureMapID:
+            result = @"FeatureMap";
+            break;
+
+        case MTRAttributeIDTypeClusterDollAttributeClusterRevisionID:
+            result = @"ClusterRevision";
+            break;
+
+        default:
+            result = [NSString stringWithFormat:@"<Unknown attributeID %u>", attributeID];
+            break;
+        }
+        break;
+
     case MTRClusterIDTypeUnitTestingID:
 
         switch (attributeID) {
@@ -10912,6 +10958,24 @@ NSString * MTRRequestCommandNameForID(MTRClusterIDType clusterID, MTRCommandIDTy
         }
         break;
 
+    case MTRClusterIDTypeDollID:
+
+        switch (commandID) {
+
+        case MTRCommandIDTypeClusterDollCommandBlinkID:
+            result = @"Blink";
+            break;
+
+        case MTRCommandIDTypeClusterDollCommandSmileID:
+            result = @"Smile";
+            break;
+
+        default:
+            result = [NSString stringWithFormat:@"<Unknown commandID %u>", commandID];
+            break;
+        }
+        break;
+
     case MTRClusterIDTypeUnitTestingID:
 
         switch (commandID) {
@@ -12581,6 +12645,16 @@ NSString * MTRResponseCommandNameForID(MTRClusterIDType clusterID, MTRCommandIDT
         case MTRCommandIDTypeClusterCommissionerControlCommandReverseOpenCommissioningWindowID:
             result = @"ReverseOpenCommissioningWindow";
             break;
+
+        default:
+            result = [NSString stringWithFormat:@"<Unknown commandID %u>", commandID];
+            break;
+        }
+        break;
+
+    case MTRClusterIDTypeDollID:
+
+        switch (commandID) {
 
         default:
             result = [NSString stringWithFormat:@"<Unknown commandID %u>", commandID];
@@ -14405,6 +14479,16 @@ NSString * MTREventNameForID(MTRClusterIDType clusterID, MTREventIDType eventID)
         case MTREventIDTypeClusterCommissionerControlEventCommissioningRequestResultID:
             result = @"CommissioningRequestResult";
             break;
+
+        default:
+            result = [NSString stringWithFormat:@"<Unknown eventID %u>", eventID];
+            break;
+        }
+        break;
+
+    case MTRClusterIDTypeDollID:
+
+        switch (eventID) {
 
         default:
             result = [NSString stringWithFormat:@"<Unknown eventID %u>", eventID];

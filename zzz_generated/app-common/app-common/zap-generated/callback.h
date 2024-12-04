@@ -656,6 +656,11 @@ void emberAfCommissionerControlClusterInitCallback(chip::EndpointId endpoint);
 /**
  * @param endpoint    Endpoint that is being initialized
  */
+void emberAfDollClusterInitCallback(chip::EndpointId endpoint);
+
+/**
+ * @param endpoint    Endpoint that is being initialized
+ */
 void emberAfUnitTestingClusterInitCallback(chip::EndpointId endpoint);
 
 /**
@@ -5461,6 +5466,45 @@ chip::Protocols::InteractionModel::Status MatterCommissionerControlClusterServer
 void emberAfCommissionerControlClusterServerTickCallback(chip::EndpointId endpoint);
 
 //
+// Doll Cluster
+//
+
+/**
+ * @param endpoint    Endpoint that is being initialized
+ */
+void emberAfDollClusterServerInitCallback(chip::EndpointId endpoint);
+
+/**
+ * @param endpoint    Endpoint that is being shutdown
+ */
+void MatterDollClusterServerShutdownCallback(chip::EndpointId endpoint);
+
+/**
+ * @param endpoint    Endpoint that is being initialized
+ */
+void emberAfDollClusterClientInitCallback(chip::EndpointId endpoint);
+
+/**
+ * @param attributePath Concrete attribute path that changed
+ */
+void MatterDollClusterServerAttributeChangedCallback(const chip::app::ConcreteAttributePath & attributePath);
+
+/**
+ * @param attributePath Concrete attribute path to be changed
+ * @param attributeType Attribute type
+ * @param size          Attribute size
+ * @param value         Attribute value
+ */
+chip::Protocols::InteractionModel::Status
+MatterDollClusterServerPreAttributeChangedCallback(const chip::app::ConcreteAttributePath & attributePath,
+                                                   EmberAfAttributeType attributeType, uint16_t size, uint8_t * value);
+
+/**
+ * @param endpoint  Endpoint that is being served
+ */
+void emberAfDollClusterServerTickCallback(chip::EndpointId endpoint);
+
+//
 // Unit Testing Cluster
 //
 
@@ -6918,6 +6962,16 @@ bool emberAfCommissionerControlClusterRequestCommissioningApprovalCallback(
 bool emberAfCommissionerControlClusterCommissionNodeCallback(
     chip::app::CommandHandler * commandObj, const chip::app::ConcreteCommandPath & commandPath,
     const chip::app::Clusters::CommissionerControl::Commands::CommissionNode::DecodableType & commandData);
+/**
+ * @brief Doll Cluster Blink Command callback (from client)
+ */
+bool emberAfDollClusterBlinkCallback(chip::app::CommandHandler * commandObj, const chip::app::ConcreteCommandPath & commandPath,
+                                     const chip::app::Clusters::Doll::Commands::Blink::DecodableType & commandData);
+/**
+ * @brief Doll Cluster Smile Command callback (from client)
+ */
+bool emberAfDollClusterSmileCallback(chip::app::CommandHandler * commandObj, const chip::app::ConcreteCommandPath & commandPath,
+                                     const chip::app::Clusters::Doll::Commands::Smile::DecodableType & commandData);
 /**
  * @brief Unit Testing Cluster Test Command callback (from client)
  */
